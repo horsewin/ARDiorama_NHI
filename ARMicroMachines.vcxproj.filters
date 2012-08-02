@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
+    </Filter>
+    <Filter Include="Physics">
+      <UniqueIdentifier>{ca448676-dc6d-4bc7-80a4-536d6bfc1cca}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{44d143e8-3ad1-465e-8652-a2ae4f4e82fb}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Transforms">
+      <UniqueIdentifier>{f3eb941b-b70b-4358-ae30-532885ca921f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Controls">
+      <UniqueIdentifier>{c0895f1c-0ad5-4c0d-a75d-98f13396a392}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Gestures">
+      <UniqueIdentifier>{7bae1d04-ad06-476e-aa2f-f88e542d2287}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Skin_Col_Segment">
+      <UniqueIdentifier>{c46a4d2d-1cac-4080-96bf-128967c2d63b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Network">
+      <UniqueIdentifier>{6dfa7d26-9ed3-43d3-a661-b4bd3f4ad661}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\MyShadowMap.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Skin_Col_Segment\GMM.cpp">
+      <Filter>Skin_Col_Segment</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Skin_Col_Segment\HandRegion.cpp">
+      <Filter>Skin_Col_Segment</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Physics\bt_ARMM_hand.cpp">
+      <Filter>Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Physics\bt_ARMM_world.cpp">
+      <Filter>Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ViewingModel.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Network\Communicator.cpp">
+      <Filter>Network</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\main.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\MyShadowMap.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\osg.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\osg_geom_data.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="src\leastsquaresquat.h">
+      <Filter>Transforms</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Transforms.h">
+      <Filter>Transforms</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Controls\Controls.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Controls\KeyboardControls.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Controls\XBoxControls.h">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Skin_Col_Segment\GMM.h">
+      <Filter>Skin_Col_Segment</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Skin_Col_Segment\HandRegion.h">
+      <Filter>Skin_Col_Segment</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Physics\bt_ARMM_hand.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Physics\bt_ARMM_world.h">
+      <Filter>Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\ViewingModel.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Network\Communicator.h">
+      <Filter>Network</Filter>
+    </ClInclude>
+    <ClInclude Include="src\UserConstant.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,190 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{336DB869-0511-4AEA-97AA-3ADB447624C6}</ProjectGuid>
+    <RootNamespace>Kinect Pointing</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)\bin\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)\bin\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)\bin\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)\bin\$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)\bin\</OutDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\bin\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)\bin\$(Configuration)\</IntDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\bin\$(Configuration)\</IntDir>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|x64'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|x64'" />
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ProjectName)_d</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(LIB3DS)\src;$(OPENCV_2_1)\include\opencv;$(OPENCV_2_1)\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET_INCLUDE_DIR);$(OSGBULLET_INCLUDE_DIR);$(OSGWORKS_INCLUDE_DIR);$(ARMM)</AdditionalIncludeDirectories>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Opengl32.lib;lib3ds-2_0.lib;cv210d.lib;cvaux210d.lib;cxcore210d.lib;ml210d.lib;cxts210.lib;highgui210d.lib;opencv_ffmpeg210d.lib;openNI.lib;opiralibrary_d.lib;ocvsurf_d.lib;videoinputd.lib;opiralibrarymt_d.lib;osgd.lib;osgutild.lib;osggad.lib;osgviewerd.lib;osgtextd.lib;osgdbd.lib;osgShadowd.lib;openthreadsd.lib;BulletCollision.lib;BulletDynamics.lib;ConvexDecomposition.lib;BulletSoftBody.lib;LinearMath.lib;OpenGLSupport.lib;vrpn.lib;osgbCollision.lib;osgbDynamics.lib;osgbInteraction.lib;osgwControlsd.lib;osgwQueryd.lib;osgwToolsd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_d.exe</OutputFile>
+      <AdditionalLibraryDirectories>lib;$(LIB3DS)\Debug;$(OPENCV_2_1)\lib;$(OPIRA)\lib;$(OPEN_NI_LIB);$(OSG)\lib;$(OSGBULLET_LIBRARIES_DIR);$(OSGWORKS_LIBRARIES);$(BULLET_LIBRARIES_DIR)\Debug;$(VRPN)\build\Debug</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(LIB3DS)\src;C:\OpenCV2.1\include\opencv;C:\OpenCV2.1\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;include;$(OPEN_NI_INCLUDE);C:\Users\gcoe\Downloads\Umakatsu\OpenSceneGraph-3.0.1-VS10.0.30319-x86-debug-12741\include;$(BULLET)\src;$(ARMM)\GL</AdditionalIncludeDirectories>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Opengl32.lib;lib3ds-2_0.lib;cv210d.lib;cvaux210d.lib;cxcore210d.lib;ml210d.lib;cxts210.lib;highgui210d.lib;opencv_ffmpeg210d.lib;openNI.lib;opiralibrary_d.lib;ocvsurf_d.lib;videoinputd.lib;opiralibrarymt_d.lib;osgd.lib;osgutild.lib;osggad.lib;osgviewerd.lib;osgtextd.lib;osgdbd.lib;osgShadowd.lib;openthreadsd.lib;BulletCollision.lib;BulletDynamics.lib;ConvexDecomposition.lib;LinearMath.lib;OpenGLSupport.lib;vrpn.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName)_d.exe</OutputFile>
+      <AdditionalLibraryDirectories>C:\Users\gcoe\Umakatsu\lib3ds-20080909\Debug;C:\OpenCV2.1\lib;$(OPIRA)\lib;$(OPEN_NI_LIB);C:\Users\gcoe\Downloads\Umakatsu\OpenSceneGraph-3.0.1-VS10.0.30319-x86-debug-12741\lib;C:\Users\gcoe\Umakatsu\bullet-2.78\build\lib\Debug;lib;$(VRPN)\build\Debug</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>$(LIB3DS)\src;$(OPENCV_2_1)\include\opencv;$(OPENCV_2_1)\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET_INCLUDE_DIR);$(OSGBULLET_INCLUDE_DIR);$(OSGWORKS_INCLUDE_DIR);$(ARMM)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Opengl32.lib;lib3ds-2_0.lib;cv210.lib;cvaux210.lib;cxcore210.lib;ml210.lib;cxts210.lib;highgui210.lib;opencv_ffmpeg210.lib;openNI.lib;opiralibrary.lib;ocvsurf.lib;videoinput.lib;opiralibrarymt.lib;osg.lib;osgutil.lib;osgga.lib;osgviewer.lib;osgtext.lib;osgdb.lib;osgShadow.lib;openthreads.lib;BulletCollision.lib;BulletDynamics.lib;BulletSoftbody.lib;ConvexDecomposition.lib;LinearMath.lib;OpenGLSupport.lib;vrpn.lib;osgbCollision.lib;osgbDynamics.lib;osgbInteraction.lib;osgwControls.lib;osgwQuery.lib;osgwTools.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <AdditionalLibraryDirectories>lib;$(LIB3DS)\Release;$(OPENCV_2_1)\lib;$(OPIRA)\lib;$(OPEN_NI_LIB);$(OSG)\lib;$(OSGBULLET_LIBRARIES_DIR);$(OSGWORKS_LIBRARIES);$(BULLET_LIBRARIES_DIR)\Release;$(VRPN)\build\Release</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <TargetMachine>MachineX86</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>$(LIB3DS)\src;C:\OpenCV2.1\include\opencv;C:\OpenCV2.1\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET)\src;$(ARMM)\GL</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>Opengl32.lib;lib3ds-2_0.lib;cv210.lib;cvaux210.lib;cxcore210.lib;ml210.lib;cxts210.lib;highgui210.lib;opencv_ffmpeg210.lib;openNI.lib;opiralibrary.lib;ocvsurf.lib;videoinput.lib;opiralibrarymt.lib;osg.lib;osgutil.lib;osgga.lib;osgviewer.lib;osgtext.lib;osgdb.lib;osgShadow.lib;openthreads.lib;BulletCollision.lib;BulletDynamics.lib;ConvexDecomposition.lib;LinearMath.lib;OpenGLSupport.lib;vrpn.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>$(OutDir)$(ProjectName).exe</OutputFile>
+      <AdditionalLibraryDirectories>$(LIB3DS)\Release;C:\OpenCV2.1\lib;$(OPIRA)\lib;$(OPEN_NI_LIB);$(OSG)\lib;$(BULLET)\lib;lib;$(VRPN)\build\Release</AdditionalLibraryDirectories>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>true</OptimizeReferences>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\MyShadowMap.cpp" />
+    <ClCompile Include="src\Network\Communicator.cpp" />
+    <ClCompile Include="src\Physics\bt_ARMM_hand.cpp" />
+    <ClCompile Include="src\Physics\bt_ARMM_world.cpp" />
+    <ClCompile Include="src\Skin_Col_Segment\GMM.cpp" />
+    <ClCompile Include="src\Skin_Col_Segment\HandRegion.cpp" />
+    <ClCompile Include="src\ViewingModel.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="src\main.h" />
+    <ClInclude Include="src\MyShadowMap.h" />
+    <ClInclude Include="src\Network\Communicator.h" />
+    <ClInclude Include="src\osg.h" />
+    <ClInclude Include="src\osg_geom_data.h" />
+    <ClInclude Include="src\leastsquaresquat.h" />
+    <ClInclude Include="src\Physics\bt_ARMM_hand.h" />
+    <ClInclude Include="src\Physics\bt_ARMM_world.h" />
+    <ClInclude Include="src\Skin_Col_Segment\GMM.h" />
+    <ClInclude Include="src\Skin_Col_Segment\HandRegion.h" />
+    <ClInclude Include="src\Transforms.h" />
+    <ClInclude Include="src\Controls\Controls.h" />
+    <ClInclude Include="src\Controls\KeyboardControls.h" />
+    <ClInclude Include="src\Controls\XBoxControls.h" />
+    <ClInclude Include="src\UserConstant.h" />
+    <ClInclude Include="src\ViewingModel.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

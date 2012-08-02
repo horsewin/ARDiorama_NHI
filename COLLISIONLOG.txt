@@ -1,0 +1,19 @@
+collisionIdx = 1; stroke=1; touch=1;
+ストローク状態として，触れている座標値すべてを保持する．
+
+colIdx = 1; stroke=1; touch = 0;
+触れていた物体から離れたということで，ストロークを終わる．んで，
+mesh decompositionを実行する．
+
+colIdx = 1; stroke = 0; touch=0;
+今後ストロークさせないことを明示する．
+
+colIdx = 1; stroke = 0; touch=1;
+接触している座標値を取得し，パーツを選択する．
+
+colIdx = 1; stroke = 0; touch=0;
+パーツを手に付随させる．
+
+colIdx = 2; stroke = 0; touch = 1．
+パーツを別のオブジェクトに貼り付ける．
+もし，別オブジェクトもパーツ分解したければ，同様の変数を用意してメッシュデコンポジションまでの過程を用意してあげる．

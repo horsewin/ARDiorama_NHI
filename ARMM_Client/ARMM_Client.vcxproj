@@ -1,0 +1,99 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{71556340-BDC6-49EB-80AF-E52A323959A6}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>ARMM_Client</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ARMM)\src;C:\OpenCV2.1\include;$(VRPN);$(OPIRA)\include;./include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET)\src;../</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>$(OPIRA)\lib;C:\OpenCV2.1\lib;$(OPEN_NI_LIB);$(OSG)\lib;$(BULLET)\lib\Debug;lib;$(VRPN)\build\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Opengl32.lib;cv210d.lib;cxcore210d.lib;highgui210d.lib;opiralibrary_d.lib;ocvsurf_d.lib;videoinputd.lib;opiralibrarymt_d.lib;osgd.lib;osgutild.lib;osggad.lib;osgviewerd.lib;osgtextd.lib;osgdbd.lib;osgShadowd.lib;openthreadsd.lib;vrpn.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ARMM)\src;C:\OpenCV2.1\include;$(VRPN);$(OPIRA)\include;include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET)\src;../</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>$(OPIRA)\lib;C:\OpenCV2.1\lib;$(OPEN_NI_LIB);$(OSG)\lib;$(BULLET)\lib\Release;lib;$(VRPN)\build\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>Opengl32.lib;cv210.lib;cxcore210.lib;highgui210.lib;opiralibrary.lib;ocvsurf.lib;videoinput.lib;opiralibrarymt.lib;zthread.lib;osg.lib;osgutil.lib;osgga.lib;osgviewer.lib;osgtext.lib;osgdb.lib;osgShadow.lib;openthreads.lib;vrpn.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="src\ARMM_Client.cpp" />
+    <ClCompile Include="src\MyShadowMap.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\src\constant.h" />
+    <ClInclude Include="src\ARMM_Client.h" />
+    <ClInclude Include="src\KeyboardControls_client.h" />
+    <ClInclude Include="src\leastsquaresquat.h" />
+    <ClInclude Include="src\MyShadowMap.h" />
+    <ClInclude Include="src\osg_Client.h" />
+    <ClInclude Include="src\osg_geom_data.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
