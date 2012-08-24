@@ -35,7 +35,7 @@
 extern const int NUMBER_CAR;
 extern const float MIN_HAND_PIX;
 extern const int MAX_NUM_HANDS;
-vector<int> obj_ind;
+vector<int> objVectorDeletable;
 
 bool WIREFRAME_MODE = false;
 

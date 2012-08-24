@@ -79,6 +79,7 @@ using namespace std;
 
 const float SPHERE_SIZE_ = 2;//FULL SIZE
 const float CUBE_SIZE_ = 2;//half_size
+const int REGULAROBJECTNUM = 21*21+3;
 
 const int maxProxies = 32766;
 const int maxOverlap = 65535;
@@ -88,6 +89,7 @@ const int SHAPE_BOX    = 0;
 const int SHAPE_CONVEX = 4;
 const int SHAPE_SPHERE = 8;
 
+#define REP(i,n) for(int i=0;i<(int)n;++i)
 
 //---------------------------------------------------------------------------
 // Global
@@ -95,7 +97,7 @@ const int SHAPE_SPHERE = 8;
 int collide_counter = 0;
 double prev_collide_clock = 0.0;
 extern int Virtual_Objects_Count;
-extern vector<int> obj_ind;
+extern vector<int> objVectorDeletable;
 
 int		collide[2];       //indices  of collided objects
 float	pCollision[3];  //coordinate with a collided object
@@ -105,8 +107,10 @@ bool	touch; //(true)touch  (false)not touch
 
 btCollisionObject * actualCollisionObject = NULL; //for collision detection
 int collisionInd = -1;
+bool changeCollisionObject = false; //手と物体の間の衝突判定で手のほうを受け取らないようにするためのもの
 
 btVector3 btHandPos;
+btScalar _timeStep;
 
 //create Collision Callback 
 struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCallback
@@ -119,6 +123,8 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 	{}
 	
 	//! Called with each contact for your own processing (e.g. test if contacts fall in within sensor parameters)
+	//! indexはよくわからない値が入っていた
+	//! partIdは両方とも0が入ってることがほとんどだった
 	virtual btScalar addSingleResult(btManifoldPoint& cp,
 		const btCollisionObject* colObj0,int partId0,int index0,
 		const btCollisionObject* colObj1,int partId1,int index1)
@@ -126,25 +132,40 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 		double current_clock = static_cast<double>(cv::getTickCount());
 		double time_spent = ( current_clock - prev_collide_clock ) / cv::getTickFrequency();
 		// collision frequency is set to at least 3.0 sec upward
+		//if(true){
 		if( time_spent > 1.0){
 			prev_collide_clock = current_clock;
-      btVector3 tmp1 = cp.m_positionWorldOnA;
-      btVector3 tmp2 = cp.m_positionWorldOnB;
-      
+			//btVector3 tmp1 = cp.m_positionWorldOnA;
+			btVector3 tmp1 = cp.m_localPointA;
+			btVector3 tmp2 = cp.m_localPointB;
+			
 
-      cout << "COLLIDE : " << collide_counter <<">> " 
-        << partId0 << ":" << partId1 << endl;
-      pCollision[0] = tmp1.getX()*10;
-      pCollision[1] = tmp1.getY()*10;
-      pCollision[2] = tmp1.getZ()*10;
+			cout << "COLLIDE : " << collide_counter <<">> " 
+			<< endl;
 
-	  collide_counter++;
+			if(!changeCollisionObject)
+			{
+				pCollision[0] = tmp1.getX()*10;
+				pCollision[1] = tmp1.getY()*10;
+				pCollision[2] = tmp1.getZ()*10;
+				//TODO const_castを使わない方法
+				// 現在衝突しているオブジェクトのポインタを保存
+				actualCollisionObject = const_cast<btCollisionObject * >(colObj0);
 
-      //TODO const_castを使わない方法
-      // 現在衝突しているオブジェクトのポインタを保存
-      actualCollisionObject = const_cast<btCollisionObject * >(colObj0);
+			}
+			else
+			{
+				pCollision[0] = tmp2.getX()*10;
+				pCollision[1] = tmp2.getY()*10;
+				pCollision[2] = tmp2.getZ()*10;
+				//TODO const_castを使わない方法
+				// 現在衝突しているオブジェクトのポインタを保存
+				actualCollisionObject = const_cast<btCollisionObject * >(colObj1);
+			}
 
-    }
+			collide_counter++;
+		}
+
 		return 0; // not actually sure if return value is used for anything...?
 	}
 };
@@ -167,13 +188,23 @@ struct MeshUpdater : public osg::Drawable::UpdateCallback
         btSoftBody::tNodeArray& nodes = _softBody->m_nodes;
         osg::Vec3Array::iterator it( verts->begin() );
         unsigned int idx = 0;
+		
+		idx = _size/2;
+		btVector3 delta = (btHandPos*10 - nodes[idx].m_x);		
 
-		nodes[idx].m_x.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
+		static const btScalar	maxdrag=10;
+		if(delta.length2()>(maxdrag*maxdrag))
+		{
+			delta=delta.normalized()*maxdrag;
+		}
 
-		//nodes[idx].m_v = btHandPos - nodes[idx].m_x;
+		nodes[idx].m_v *= 0;
+		nodes[idx].m_v += (delta/_timeStep)*10;
+
+		//nodes[idx].m_x.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
+
 		for( idx=0; idx<_size; idx++)
         {
-			//nodes[idx].m_v = (nodes[0].m_x - nodes[idx].m_x)/(-0.016667);
             *it++ = osgbCollision::asOsgVec3( nodes[ idx ].m_x );
         }
         verts->dirty();
@@ -190,10 +221,15 @@ struct MeshUpdater : public osg::Drawable::UpdateCallback
 };
 /** \endcond */
 
+void pickingPreTickCallback (btDynamicsWorld *world, btScalar timeStep)
+{
+	//printf("%lf\n",timeStep);
+	_timeStep = timeStep;
+}
+
 btVector3 worldMin(-1000,-1000,-1000);
 btVector3 worldMax(1000,1000,1000);
 ContactSensorCallback callback;
-btSoftBodyWorldInfo     worldInfo;
 namespace{
 	double GetMaxNumber(const double & x, const double & y, const double & z){
 		if(x>y){
@@ -303,6 +339,8 @@ bt_ARMM_world::bt_ARMM_world(void)
 	worldDepth = 0;
 	m_rawHeightfieldData = new float[GRID_SIZE];
 	HF_Size = GRID_SIZE;
+
+	textureSoftBody = 0;
 }
 
 bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation/initialization
@@ -328,8 +366,8 @@ bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation
 
 //		for (int j=0;j<Convex_Shape.size();j++) delete Convex_Shape[j];
 		Convex_Shape.clear();
-//		for (int j=0;j<Objects_Body.size();j++)	delete Objects_Body[j];
-		Objects_Body.clear();
+//		for (int j=0;j<m_objectsBody.size();j++)	delete m_objectsBody[j];
+		m_objectsBody.clear();
 
 		delete m_indexVertexArrays;
 		delete m_vertices;
@@ -426,14 +464,16 @@ m_threadSupportCollision = new Win32ThreadSupport(Win32ThreadSupport::Win32Threa
 
 	m_dynamicsWorld->setGravity(btVector3(0,0,-9.8*10));
 
-	worldInfo.m_dispatcher	= m_dispatcher;
-	worldInfo.m_broadphase	= m_overlappingPairCache;
-	worldInfo.m_gravity		= m_dynamicsWorld->getGravity();
-	worldInfo.air_density	= btScalar( 1.2 );
-    worldInfo.water_density = 0;
-    worldInfo.water_offset	= 0;
-    worldInfo.water_normal	= btVector3( 0, 0, 0 );
-    worldInfo.m_sparsesdf.Initialize();
+    m_worldInfo.m_sparsesdf.Initialize();
+	m_worldInfo.m_dispatcher	= m_dispatcher;
+	m_worldInfo.m_broadphase	= m_overlappingPairCache;
+	m_worldInfo.m_gravity		= btVector3(0,0,-9.8*10);
+	m_worldInfo.air_density		= btScalar( 1.2 );
+    m_worldInfo.water_density	= 0;
+    m_worldInfo.water_offset	= 0;
+    m_worldInfo.water_normal	= btVector3( 0, 0, 0 );
+	
+	m_dynamicsWorld->setInternalTickCallback(pickingPreTickCallback, this, true);
 
 	btTransform tr;
 	tr.setIdentity();
@@ -575,35 +615,38 @@ void bt_ARMM_world::Update()
 		}
 	}
 #endif /*SIM_MICROMACHINE*/
+
 	//check the object to delete it
-	obj_ind.clear();
-	REP(i,Objects_Body.size()){
-		btVector3 trans = Objects_Body[i]->getCenterOfMassTransform().getOrigin();
+	objVectorDeletable.clear();
+
+	REP(i,m_objectsBody.size()){
+		btVector3 trans = m_objectsBody[i]->getCenterOfMassTransform().getOrigin();
 		if( trans.getZ() < -10 ){
-			obj_ind.push_back(i);
+			objVectorDeletable.push_back(i);
 		}
 	}
-	if( obj_ind.empty())
-	{
-	}
+
+	if( objVectorDeletable.empty()){}
 	else
 	{
-		for(int i= obj_ind.size()-1; i>=0; i--){
-			vector<btRigidBody*>::iterator it			= Objects_Body.begin() + obj_ind[i];
-			vector<btDefaultMotionState*>::iterator it2 = ObjectsMotionState.begin() + obj_ind[i];
+		for(int i= objVectorDeletable.size()-1; i>=0; i--){
+			vector<btRigidBody*>::iterator it			= m_objectsBody.begin() + objVectorDeletable[i];
+			vector<btDefaultMotionState*>::iterator it2 = ObjectsMotionState.begin() + objVectorDeletable[i];
 
 			//for out of arrays
-			unsigned int ind = obj_ind[i];
+			unsigned int ind = objVectorDeletable[i];
 			if( ObjectsMotionState.size() < ind
-			||	Objects_Body.size() < ind) continue;
+			||	m_objectsBody.size() < ind) continue;
 
-			//Objects_Body.erase(it);
+			//m_objectsBody.erase(it);
 			//ObjectsMotionState.erase(it2);
 		}
 	}
 
 	//start simulation
 	m_dynamicsWorld->stepSimulation(1/20.f,5); //60s
+	m_dynamicsWorld->performDiscreteCollisionDetection();
+	m_worldInfo.m_sparsesdf.GarbageCollect();
 }
 
 void bt_ARMM_world::setCarMovement() 
@@ -744,13 +787,13 @@ int bt_ARMM_world::create_Sphere() {
 
 	int index = ObjectsMotionState.size()-1;
   btRigidBody::btRigidBodyConstructionInfo Sphere_Body_CI(sphereMass,ObjectsMotionState.at(index),Sphere_Shape,localInertia);
-	Objects_Body.push_back(new btRigidBody(Sphere_Body_CI));
+	m_objectsBody.push_back(new btRigidBody(Sphere_Body_CI));
 
-	m_dynamicsWorld->addRigidBody(Objects_Body.at(index));
+	m_dynamicsWorld->addRigidBody(m_objectsBody.at(index));
 
-	Objects_Body.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20,-5,10)));
-	Objects_Body.at(index)->setFriction(FRICTION);
-	Objects_Body.at(index)->setRestitution(RESTITUTION);
+	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20,-5,10)));
+	m_objectsBody.at(index)->setFriction(FRICTION);
+	m_objectsBody.at(index)->setRestitution(RESTITUTION);
 	return index;
 }
 
@@ -767,12 +810,12 @@ int bt_ARMM_world::create_Box() {
 
 	int index = ObjectsMotionState.size()-1;
 	btRigidBody::btRigidBodyConstructionInfo Box_Body_CI(boxMass,ObjectsMotionState.at(index),Box_Shape,localInertia);
-	Objects_Body.push_back(new btRigidBody(Box_Body_CI));
-	m_dynamicsWorld->addRigidBody(Objects_Body.at(index));
+	m_objectsBody.push_back(new btRigidBody(Box_Body_CI));
+	m_dynamicsWorld->addRigidBody(m_objectsBody.at(index));
 
-	Objects_Body.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(30,-5,0)));
-	Objects_Body.at(index)->setFriction(FRICTION);
-	Objects_Body.at(index)->setRestitution(RESTITUTION);
+	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(30,-5,0)));
+	m_objectsBody.at(index)->setFriction(FRICTION);
+	m_objectsBody.at(index)->setRestitution(RESTITUTION);
 	return index;
 }
 
@@ -792,14 +835,14 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0))); 
 	btRigidBody* btObject = new btRigidBody(50, state, NULL);
 	btObject->setCollisionShape( osgbCollision::btTriMeshCollisionShapeFromOSG(sample.get() ) );
-    //btObject->setCollisionFlags( btCollisionObject::CF_STATIC_OBJECT );
-	Objects_Body.push_back(btObject);
+	btObject->setCollisionFlags(  btCollisionObject::CF_KINEMATIC_OBJECT );
+	m_objectsBody.push_back(btObject);
 	m_dynamicsWorld->addRigidBody(btObject);
 
-	int index = Objects_Body.size() - 1;
-	Objects_Body.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(5,-5,0)));
-	Objects_Body.at(index)->setFriction(FRICTION);
-	Objects_Body.at(index)->setRestitution(RESTITUTION);
+	int index = m_objectsBody.size() - 1;
+	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(5,-5,0)));
+	m_objectsBody.at(index)->setFriction(FRICTION);
+	m_objectsBody.at(index)->setRestitution(RESTITUTION);
 
 	return index;
 }
@@ -809,9 +852,9 @@ osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
 	const short resX( 12 ), resY( 9 );
 
     osg::ref_ptr< osg::Geode > geode( new osg::Geode );
-    const osg::Vec3 llCorner( 130.0, -5.0, 50.0 );
-    const osg::Vec3 uVec( 40.0, 0.0, 0.0 );
-    const osg::Vec3 vVec( 0.0, 1.0, 30.0 ); // Must be at a slight angle for wind to catch it.
+    const osg::Vec3 llCorner( 130.0, -5.0, 0.0 );
+    const osg::Vec3 uVec( 100.0, 0.0, 0.0 );
+    const osg::Vec3 vVec( 0.0, 100.0, 0.0 ); // Must be at a slight angle for wind to catch it.
     osg::Geometry* geom = osgwTools::makePlane( llCorner,
         uVec, vVec, osg::Vec2s( resX-1, resY-1 ) );
     geode->addDrawable( geom );
@@ -847,13 +890,14 @@ osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
     // our update callback will update vertex data from the soft body
     // node data, so it's important that the corners and resolution
     // parameters produce node data that matches the vertex data.
-	
-    btSoftBody* textureSoftBody( btSoftBodyHelpers::CreatePatch( worldInfo,
+
+	//printf("(%f,%f,%f)G\n",m_worldInfo.m_gravity.x(),m_worldInfo.m_gravity.y(),m_worldInfo.m_gravity.z());
+	textureSoftBody = btSoftBodyHelpers::CreatePatch( m_worldInfo,
         osgbCollision::asBtVector3( llCorner ),
         osgbCollision::asBtVector3( llCorner + uVec ),
         osgbCollision::asBtVector3( llCorner + vVec ),
         osgbCollision::asBtVector3( llCorner + uVec + vVec ),
-        resX, resY, 0, true ) );
+        resX, resY, 0, true );
 
     // Configure the soft body for interaction with the wind.
     textureSoftBody->getCollisionShape()->setMargin( 0.1 );
@@ -861,13 +905,25 @@ osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
     textureSoftBody->generateBendingConstraints( 2, textureSoftBody->m_materials[ 0 ] );
     textureSoftBody->m_cfg.kLF = 0.05;
     textureSoftBody->m_cfg.kDG = 0.01;
+	textureSoftBody->m_cfg.kDF = 1.0;
+	//textureSoftBody->generateClusters(64);
     textureSoftBody->m_cfg.piterations = 2;
+	textureSoftBody->m_cfg.collisions |= btSoftBody::fCollision::SDF_RS; // for collision BUT no operation;;
+	textureSoftBody->m_cfg.collisions |= btSoftBody::fCollision::VF_SS;
 	textureSoftBody->m_cfg.aeromodel = btSoftBody::eAeroModel::V_TwoSided;
     textureSoftBody->setWindVelocity( btVector3( 0., 0., 0. ) );
-    textureSoftBody->setTotalMass( 0.5 );
+    textureSoftBody->setTotalMass( 10 );
+	//textureSoftBody->get
+	////体積保存の係数
+	//textureSoftBody->m_cfg.kVC = 0.5;
+
+	////第1引数で体積保存のフラグをON
+	//textureSoftBody->setPose(true,false);
+
+	textureSoftBody->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
 
     //geom->setUpdateCallback( new MeshUpdater( textureSoftBody, resX*resY ) );
-	m_dynamicsWorld->addSoftBody(textureSoftBody);
+	this->getSoftDynamicsWorld()->addSoftBody(textureSoftBody);
 	geom->setUpdateCallback( new MeshUpdater( textureSoftBody, resX*resY));
     return( geode.release() );
 }
@@ -887,13 +943,13 @@ btConvexHullShape* bt_ARMM_world::get_Convex_Shape(int index) {
 
 btTransform bt_ARMM_world::get_Object_Transform(int index) {
 	btTransform trans;
-	Objects_Body.at(index)->setRestitution(RESTITUTION);
-	Objects_Body.at(index)->getMotionState()->getWorldTransform(trans);
+	m_objectsBody.at(index)->setRestitution(RESTITUTION);
+	m_objectsBody.at(index)->getMotionState()->getWorldTransform(trans);
 	return trans;
 }
 
 int bt_ARMM_world::Num_Object() {
-	return Objects_Body.size();
+	return m_objectsBody.size();
 }
 
 void bt_ARMM_world::set_center_trimesh(float x, float y) {
@@ -937,13 +993,9 @@ void bt_ARMM_world::updateTrimeshRefitTree(float* hf) {
 	trimeshShape->refitTree(worldMin,worldMax);
 	m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(groundRigidBody->getBroadphaseHandle(),m_dynamicsWorld->getDispatcher());
 }
-/*
-btScalar 
-*/
 
 void bt_ARMM_world::CalcGlobalValue(float * global_x, float * global_y, const int & hand_x, const int & hand_y)
 {
-	//5.0 = masic number <- we should remove this one
 	(*global_x) = (float) (hand_x - center_trimesh.x())*world_scale;
 	(*global_y) = (float) (hand_y - (120-center_trimesh.y()))*world_scale;
 }
@@ -955,13 +1007,6 @@ void bt_ARMM_world::createHand(int hand_x, int hand_y, int sphere_resolution, fl
 	HandObjectsArray.push_back(new bt_ARMM_hand(m_dynamicsWorld, m_collisionShapes, world_scale, global_x, global_y, sphere_resolution, ratio, center_trimesh.x(), center_trimesh.y()));
 }
 
-void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float* depth_grid) 
-{
-	float global_x, global_y;
-	CalcGlobalValue(&global_x, &global_y, hand_x, hand_y);
-	HandObjectsArray.at(index)->Update(global_x,global_y,depth_grid);
-}
-
 void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float curr_hands_ratio, float* depth_grid)
 {
 	float global_x, global_y;
@@ -971,14 +1016,21 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 
 
 	//check collision to kinematic box objects with hands
-	REP(obj, Objects_Body.size()){
-		if( Objects_Body.at(obj)->getCollisionShape()->getShapeType() == SHAPE_BOX)
+	REP(obj, m_objectsBody.size()){
+		//if( m_objectsBody.at(obj)->getCollisionShape()->getShapeType() == SHAPE_BOX)
 		{
-			if( Objects_Body.at(obj)->isKinematicObject() ){
+			if( m_objectsBody.at(obj)->isKinematicObject() )
+			{
 				REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
 				{
-			      //衝突物体の登録
-				  m_dynamicsWorld->contactPairTest(Objects_Body.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
+			      //衝突のチェック
+				  m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
+					//collision check with a texture soft body
+					if(textureSoftBody)
+					{
+						//衝突のチェック
+						m_dynamicsWorld->contactPairTest(HandObjectsArray.at(index)->handSphereRigidBody.at(i), textureSoftBody, callback);
+					}
 				}
 			}
 		}
@@ -1032,27 +1084,24 @@ bool bt_ARMM_world::GetSphereRep( void ){
 //箱形状のオブジェクトの属性をキネマティック
 //（ふれても衝突判定のみで座標を動かさない)
 //物体に変更
-void bt_ARMM_world::ChangeAttribute(int pos)
+void bt_ARMM_world::ChangeAttribute(int pos, int index)
 {
-	REP(obj, Objects_Body.size()){
-    // just only box shape object is changed to Kinematic object
-		if( Objects_Body.at(obj)->getCollisionShape()->getShapeType() == SHAPE_BOX
-      && Objects_Body.at(obj)->getCollisionFlags() != btCollisionObject::CF_KINEMATIC_OBJECT){
-
-      cout << obj << " is CHANGED ATTRIBUTE" << endl;
-			btTransform trans;
-			Objects_Body.at(obj)->getMotionState()->getWorldTransform(trans);
-			trans.getOrigin().setX(pos);
-			trans.getOrigin().setY(-5);
-			trans.getOrigin().setZ(5);
-			Objects_Body.at(obj)->getMotionState()->setWorldTransform(trans);
-			Objects_Body.at(obj)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
-			return;
-		}
+	if( index >= m_objectsBody.size())
+	{
+		cerr << "Error: Out of range in m_objectsBody array" << endl;
+		cerr << "Error: index = " << index << endl;
+		return;
 	}
-  cout << "No object attribute is changed!! " << endl;
-}
+	btTransform trans;
+	m_objectsBody.at(index)->getMotionState()->getWorldTransform(trans);
+	trans.getOrigin().setX(pos);
+	trans.getOrigin().setY(-5);
+	trans.getOrigin().setZ(0);
+	m_objectsBody.at(index)->getMotionState()->setWorldTransform(trans);
+	m_objectsBody.at(index)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
 
+	return;
+}
 
 /*********** Private Method ************/
 /*
@@ -1072,9 +1121,18 @@ void bt_ARMM_world::DecideCollisionCondition()
     stroke = false;
   }
 
+	
+
   for(int i=0; i<collisionSize; i++)
   {
-    if(colObjs[i] == actualCollisionObject ){
+    if(colObjs[i] == actualCollisionObject )
+	{
+		//except for a regular object, such hand objects or cars
+		if( i < REGULAROBJECTNUM)
+		{
+			changeCollisionObject = true;
+			return;
+		}
 
       touch = true; //必要かどうかわからないが一応trueに設定
 
@@ -1095,7 +1153,11 @@ void bt_ARMM_world::DecideCollisionCondition()
         }
         else
         {
-          cout << " Collision with " << i << " and finished transfer from " << collisionInd << endl;
+          cout << " Collision with " << i << " and finished transfer from " << collisionInd <<  " in " 
+          << pCollision[0] << ","
+          << pCollision[1] << ","
+          << pCollision[2] << ","
+          << endl;
         }
       }
 
@@ -1115,10 +1177,13 @@ void bt_ARMM_world::DecideCollisionCondition()
     }
   }
 
+  changeCollisionObject = false;
+
   //any collision objects is not touching with hands
   double current_clock = static_cast<double>(cv::getTickCount());
   double time_spent = ( current_clock - prev_collide_clock ) / cv::getTickFrequency();
-  if( time_spent > 1.0){
+  if( time_spent > 1.0)
+  {
     touch = false;
   }
 

@@ -91,12 +91,13 @@ void ARMM_Communicator::mainloop()
 {
 	//----->Set the number of sending data
 	const int CAR_PARAM       = NUMBER_CAR*NUM_WHEEL+NUMBER_CAR;
-  const int COLLISION_PARAM = CAR_PARAM + 1;  
-  const int object_num = static_cast<vrpn_int32>( (*m_objects_body).size() ); 
+	const int COLLISION_PARAM = CAR_PARAM + 1;  
+	const int object_num = static_cast<vrpn_int32>( (*m_objects_body).size() ); 
 	int hands_num  = (*m_hands_body).size();
 	std::vector<float *> hand_x;
 	std::vector<float *> hand_y;
 	std::vector<float *> hand_z;
+
 	hand_x.clear();
 	hand_y.clear();
 	hand_z.clear();

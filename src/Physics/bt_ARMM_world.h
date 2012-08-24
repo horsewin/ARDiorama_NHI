@@ -85,11 +85,9 @@ public:
 		btSoftBodyRigidBodyCollisionConfiguration*	m_SoftCollisionConfiguration; //added by Atsushi.U 2012/07/28
 		btDefaultCollisionConfiguration*			m_collisionConfiguration;
 		btTriangleIndexVertexArray*					m_indexVertexArrays;
+		btSoftBodyWorldInfo							m_worldInfo;
 
-
-		btSoftRigidDynamicsWorld*	m_dynamicsWorld;
-	    //btDiscreteDynamicsWorld* m_dynamicsWorld;
-		//btCollisionWorld* m_dynamicsWorld;
+	    btDiscreteDynamicsWorld* m_dynamicsWorld;
 
 		btDefaultMotionState*				m_groundMotionState;
 		std::vector<btDefaultMotionState*>	m_WorldSphereProxyMotionState;
@@ -99,8 +97,7 @@ public:
 		btBoxShape* Box_Shape;
 		btSphereShape* Sphere_Shape;
 		std::vector<btConvexHullShape*> Convex_Shape;
-		std::vector<btRigidBody*> Objects_Body;
-		//std::vector<btRigidBody*> WorldSphereProxyRigidBody;
+		std::vector<btRigidBody*> m_objectsBody;
 
 		std::vector<bt_ARMM_hand*> HandObjectsArray;
 
@@ -181,13 +178,27 @@ public:
 		bool GetSphereRep( void );
 
 		//Function for kinematic box
-		void ChangeAttribute(int pos = 0);
+		void ChangeAttribute(int pos = 0, int index = 0);
+
+		virtual const btSoftRigidDynamicsWorld*	getSoftDynamicsWorld() const
+		{
+			///just make it a btSoftRigidDynamicsWorld please
+			///or we will add type checking
+			return (btSoftRigidDynamicsWorld*) m_dynamicsWorld;
+		}
+
+		virtual btSoftRigidDynamicsWorld*	getSoftDynamicsWorld()
+		{
+			///just make it a btSoftRigidDynamicsWorld please
+			///or we will add type checking
+			return (btSoftRigidDynamicsWorld*) m_dynamicsWorld;
+		}
 
 	private:
 		void CalcGlobalValue(float * global_x, float * global_y, const int & hand_x, const int & hand_y);
 	    void DecideCollisionCondition();
 
-  private:
+	private:
 		bool hasInit;
 		int count;
 		int rightIndex;

@@ -54,6 +54,7 @@
 const int MAX_FPS = 100;
 
 extern int collide[2];
+extern float pCollision[3];
 
 using namespace std; 
 using namespace xn;
@@ -311,7 +312,7 @@ int main(int argc, char* argv[])
 	//	fprintf(stderr, "Could not add channel\n");
 	//	return -1;
 	//}
-	ARMM_server->SetObjectsData(&(m_world->Objects_Body));
+	ARMM_server->SetObjectsData(&(m_world->m_objectsBody));
 	ARMM_server->SetHandsData(&(m_world->HandObjectsArray));
 
   cout << "Created VRPN server." << endl;
@@ -476,12 +477,12 @@ void RenderScene(IplImage *arImage, Capture *capture) {
 			}
 		}
 		if(Virtual_Objects_Count > 0) {
-			if(!obj_ind.empty()){
-				for(int i= obj_ind.size()-1; i>=0; i--)
+			if(!objVectorDeletable.empty()){
+				for(int i= objVectorDeletable.size()-1; i>=0; i--)
 				{	
-					DeleteVirtualObject(obj_ind[i]);
+					DeleteVirtualObject(objVectorDeletable[i]);
 				}
-				obj_ind.clear();
+				objVectorDeletable.clear();
 			}
 
 
@@ -493,21 +494,28 @@ void RenderScene(IplImage *arImage, Capture *capture) {
       //  kc->check_input(80);
       //}
 
-      std::vector <osg::Quat> quat_obj_array;
-			std::vector <osg::Vec3d> vect_obj_array;
-			for(int i = 0; i < Virtual_Objects_Count; i++) {
-				btTransform trans2 = m_world->get_Object_Transform(i);
-				btQuaternion quat2 = trans2.getRotation();
-				quat_obj_array.push_back(osg::Quat(quat2.getX(), quat2.getY(), quat2.getZ(), quat2.getW())); 
-				vect_obj_array.push_back(osg::Vec3d(trans2.getOrigin().getX()*scale, trans2.getOrigin().getY()*scale,trans2.getOrigin().getZ()*scale));		
-			}
-			osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion(), quat_obj_array, vect_obj_array);
-		} else {
-			osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion());
+		std::vector <osg::Quat> quat_obj_array;
+		std::vector <osg::Vec3d> vect_obj_array;
+
+		for(int i = 0; i < Virtual_Objects_Count; i++) 
+		{
+			btTransform trans2 = m_world->get_Object_Transform(i);
+			btQuaternion quat2 = trans2.getRotation();
+			quat_obj_array.push_back(osg::Quat(quat2.getX(), quat2.getY(), quat2.getZ(), quat2.getW())); 
+			vect_obj_array.push_back(osg::Vec3d(trans2.getOrigin().getX()*scale, trans2.getOrigin().getY()*scale,trans2.getOrigin().getZ()*scale));		
 		}
+		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion(), quat_obj_array, vect_obj_array);
+	} 
+	else
+	{
+		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion());
+	}
 #else
 		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion());
 #endif /*SIM_MICROMACHINE*/
+
+		//osg::Matrix mat_view = viewer.getCamera()->getViewMatrix();
+		//osg::Matrix mat_proj = viewer.getCamera()->getProjectionMatrix();
 
 }
 
@@ -964,9 +972,22 @@ void DeleteVirtualObject(const int & index)
 {
 	vector<osg::PositionAttitudeTransform*>::iterator it = obj_transform_array.begin() + index;
 	vector<osg::ref_ptr<osg::Node>>::iterator it2 = obj_node_array.begin() + index;
+
+	if( shadowedScene->getNumChildren() <= index ||
+		shadowedScene->getNumChildren() == 0)
+	{
+		cerr << "Error: Out of range in ShadowedScene children arrays(DeleteVirtualObject)" << endl;
+		return;
+	}
+	if(obj_transform_array.empty()) 
+	{
+		cerr << "No object " << endl;
+		return;
+	}
+	cout << shadowedScene->getNumChildren() << " " << index << endl;
 	shadowedScene->removeChild(obj_transform_array.at(index));
 	obj_transform_array.erase(it);
 	obj_node_array.erase(it2);
 	Virtual_Objects_Count--;
-	cout << "Virtual objects LOST : Remain " << Virtual_Objects_Count << endl;
+	cout << index << "'s virtual objects LOST : Remain " << Virtual_Objects_Count << endl;
 }

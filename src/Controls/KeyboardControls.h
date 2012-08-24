@@ -94,30 +94,35 @@ public:
 				int index = world->create_Box();
 				osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				//world->ChangeAttribute(30);
-		        return 79;
+				world->ChangeAttribute(10, index);
+
+				return 79;
 			}
 
 			if (getKey(80)) { //p
-				string modelname = "Data/Cars/HatuneMiku.3ds";
+				string modelname = "Data/Cars/Miku.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
 				cout << "Loading..." << endl;
-
 				Virtual_Objects_Count++;
-				//world->ChangeAttribute(10);
+
+				//int index = world->create_Box();
+				//osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
+				//Virtual_Objects_Count++;
+
+				world->ChangeAttribute(30, index);
 				return 80;
 			}
 
 			if (getKey(78) || (collide_counter%3 == 0 && collide_counter != 0) ) { //N
 			//if (getKey(78) ) { //N
-				int index = world->create_Sphere();
-				osgAddObjectNode(osgNodeFromBtSphere(SPHERE_SIZE, world->get_Object_Transform(index)));
-				Virtual_Objects_Count++;
+				//int index = world->create_Sphere();
+				//osgAddObjectNode(osgNodeFromBtSphere(SPHERE_SIZE, world->get_Object_Transform(index)));
+				//Virtual_Objects_Count++;
 
-				prev_collide_clock = static_cast<double>(cv::getTickCount());
-				collide_counter++;
-				return 78;
+				//prev_collide_clock = static_cast<double>(cv::getTickCount());
+				//collide_counter++;
+				//return 78;
 			}
 		}
 #endif /*SIM_MICROMACHINE*/
