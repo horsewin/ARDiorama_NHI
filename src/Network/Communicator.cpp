@@ -10,26 +10,28 @@
 
 
 #define REP(i,n) for(int i=0;i<(int)n;++i)
-#define SIM_MICROMACHINE
 
 //---------------------------------------------------------------------------
 // Global
 //---------------------------------------------------------------------------
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 extern osg::Quat CarsOrientation[NUMBER_CAR];
 extern osg::Quat WheelsOrientaion[NUMBER_CAR][NUM_WHEEL];
 extern osg::Vec3d CarsPosition[NUMBER_CAR];
 extern osg::Vec3d WheelsPosition[NUMBER_CAR][NUM_WHEEL];
+#endif /* CAR_SIMULATION == 1 */
+
 extern int input_key;
 
 extern int collide[2];
-extern float pCollision[3];
+extern btVector3	pCollision;  //coordinate with a collided object
+extern btVector3 pColLocalOnObj;
 extern int collisionInd;
-extern bool stroke;
+extern interaction interact_state;
 extern bool touch;
 //extern IplImage *transDepth160;
 //extern float *ground_grid;
-#endif
+extern osg::Vec3d softTexture_array[resX*resY];
 
 
 //---------------------------------------------------------------------------
@@ -49,7 +51,6 @@ vrpn_Tracker( "ARMM_Comm", c )
 	// initialize the hand position
 	REP(i,UDP_LIMITATION){
 		REP(j,3){
-			hand[i][j] = 0;
 		}
 	}
 }
@@ -61,8 +62,14 @@ ARMM_Communicator::~ARMM_Communicator()
 //Atsushi
 int ARMM_Communicator::register_types(void)
 {
+	//// to handle hand state changes
+	//hand_m_id = d_connection->register_message_type("vrpn_Tracker Hand");
+
 	// to handle hand state changes
 	hand_m_id = d_connection->register_message_type("vrpn_Tracker Hand");
+	//softtexture_m_id = hand_m_id;
+	//softtexture_m_id = d_connection->register_message_type("vrpn_Tracker Hand SoftTexture");
+
 	return 0;
 }
 
@@ -76,16 +83,36 @@ int	ARMM_Communicator::encode_hand_to(char *buf, int division)
 	// Byte order of each needs to be reversed to match network standard
 
 	vrpn_buffer(&bufptr, &buflen, d_sensor);
-	//vrpn_buffer(&bufptr, &buflen, d_sensor);
-
-	REP(i,UDP_LIMITATION){
-		REP(j,3){
-			vrpn_buffer(&bufptr, &buflen, hand[i][j]);
-		}
+	
+	//packing hands info
+	REP(i,UDP_LIMITATION) REP(j,3)
+	{
+		vrpn_buffer(&bufptr, &buflen, hand[i][j]);
 	}
 
 	return HANDS_BUFFER - buflen;
 }
+
+//Atsushi
+//int	ARMM_Communicator::encode_softtexture_to(char *buf, int division)
+//{
+//	char *bufptr = buf;
+//	int  buflen =  1000;
+//
+//	// Message includes: long sensor, long scrap, vrpn_float64 pos[3], vrpn_float64 quat[4]
+//	// Byte order of each needs to be reversed to match network standard
+//
+//	//packing collision, key input and virtual objects info
+//	vrpn_buffer(&bufptr, &buflen, d_sensor);
+//	
+//	//packing soft texture info
+//	REP(i, resX*resY) REP(j,3)
+//	{
+//		vrpn_buffer(&bufptr, &buflen, softT[i][j]);
+//	}
+//
+//	return HANDS_BUFFER - buflen;
+//}
 
 void ARMM_Communicator::mainloop() 
 {
@@ -98,11 +125,7 @@ void ARMM_Communicator::mainloop()
 	std::vector<float *> hand_y;
 	std::vector<float *> hand_z;
 
-	hand_x.clear();
-	hand_y.clear();
-	hand_z.clear();
-
-	num_sensors = CAR_PARAM  + 1;
+	num_sensors = COLLISION_PARAM;
 	if(  hands_num > 0){
 		REP(i,hands_num){
 			hand_x.push_back((*m_hands_body)[i]->debugHandX());
@@ -110,18 +133,20 @@ void ARMM_Communicator::mainloop()
 			hand_z.push_back((*m_hands_body)[i]->debugHandZ());
 		}
 	}
-	// Update the number of sensors -> (car + 4 wheels) * 2 + key_input + virtual objects
-	if( object_num > 0 ){
+
+	// Update the number of sensors -> 
+	if(object_num > 0 ){
 		num_sensors += object_num;
 	}
 
 	//----->Send cars info first
-#ifdef SIM_MICROMACHINE
-	for(int i =0; i < num_sensors; i++) {
+	REP(i,num_sensors+1)
+	{
 		vrpn_gettimeofday(&_timestamp, NULL);
 		vrpn_Tracker::timestamp = _timestamp;
 		d_sensor = i;
 		if( i < CAR_PARAM){
+#if CAR_SIMULATION == 1
 			// pos and orientation of cars
 			if(i % 5 == 0)
 			{
@@ -147,26 +172,27 @@ void ARMM_Communicator::mainloop()
 				d_quat[2] = (vrpn_float64) WheelsOrientaion[j][k].z();
 				d_quat[3] = (vrpn_float64) WheelsOrientaion[j][k].w();
 			}
+#endif /* CAR_SIMULATION == 1 */
 		}		
 		//----->Keyboard input checker
-    else if( i == CAR_PARAM)
+		else if( i == CAR_PARAM)
 		{
 			pos[0] = (vrpn_float64)input_key;
 		}
 		//----->Send collisioninfo
-    else if( i > CAR_PARAM && i <= COLLISION_PARAM)
+	    else if( i > CAR_PARAM && i <= COLLISION_PARAM)
 		{
-      REP(p,3){
-        pos[p] = (vrpn_float64)pCollision[p];
-      }
-      d_quat[0] = stroke? (vrpn_float64)1.0 : (vrpn_float64)0.0;
-      d_quat[1] = touch?  (vrpn_float64)1.0 : (vrpn_float64)0.0;
-      d_quat[2] = (vrpn_float64)collisionInd;
+			pos[0] = (vrpn_float64)(pColLocalOnObj.getX());
+			pos[1] = (vrpn_float64)(pColLocalOnObj.getY());
+			pos[2] = (vrpn_float64)(pColLocalOnObj.getZ());
+			d_quat[0] = ((interact_state==STROKE1) || (interact_state==STROKE2))? (vrpn_float64)1.0 : (vrpn_float64)0.0;
+			d_quat[1] = touch?  (vrpn_float64)1.0 : (vrpn_float64)0.0;
+			d_quat[2] = (vrpn_float64)collisionInd;
 		}
 		//----->Send objects info
 		else
 		{
-			int index = i - (CAR_PARAM  + 1);
+			int index = i - (COLLISION_PARAM+1);
 			btVector3 trans = (*m_objects_body)[index]->getCenterOfMassTransform().getOrigin();
 			btQuaternion quats = (*m_objects_body)[index]->getCenterOfMassTransform().getRotation();
 			float bullet_scale_correction = 1;
@@ -199,11 +225,26 @@ void ARMM_Communicator::mainloop()
 
 		HandMessagePacking();
 	}
-	
+
+	//----->Send soft texture info
+	//if( interact_state == KEEP )
+	//{
+	//	printf("SoftTexture\n");
+	//	d_sensor = 0;
+	//	REP(index,resX*resY)
+	//	{
+	//		d_sensor = index;
+	//		softT[index][0] = static_cast<vrpn_float32>(softTexture_array[index].x()); 
+	//		softT[index][1] = static_cast<vrpn_float32>(softTexture_array[index].y()); 
+	//		softT[index][2] = static_cast<vrpn_float32>(softTexture_array[index].z()); 
+	//	}	
+
+	//	SoftTextureMessagePacking();
+	//}
+
 	//Update server main loop
   server_mainloop();
 
-#endif
 }
 
 void ARMM_Communicator::ObjectMessagePacking( void )
@@ -214,6 +255,15 @@ void ARMM_Communicator::ObjectMessagePacking( void )
 		fprintf(stderr,"can't write message: tossing\n");
 	}
 }
+
+//void ARMM_Communicator::SoftTextureMessagePacking( void )
+//{
+//	char msgbuf[1000];
+//	int  len = encode_softtexture_to(msgbuf, 1);
+//	if (d_connection->pack_message(len, _timestamp, softtexture_m_id, d_sender_id, msgbuf, vrpn_CONNECTION_LOW_LATENCY)) {
+//		fprintf(stderr,"can't write message(Soft texture handler): tossing\n");
+//	}
+//}
 
 void ARMM_Communicator::HandMessagePacking( void )
 {

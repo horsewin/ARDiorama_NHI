@@ -40,6 +40,14 @@ typedef	struct _vrpn_TRACKERHANDCB {
 typedef void (VRPN_CALLBACK *vrpn_TRACKERHANDCHANGEHANDLER)(void *userdata,
 					     const vrpn_TRACKERHANDCB info);
 
+typedef	struct _vrpn_TRACKERSOFTTEXTURECB {
+	struct timeval	msg_time;	// Time of the report
+	vrpn_int32	sensor;		// Which sensor is reporting
+	vrpn_float32 softT[resX*resY][3];
+} vrpn_TRACKERSOFTTEXTURECB;
+typedef void (VRPN_CALLBACK *vrpn_TRACKERSOFTTEXTURECHANGEHANDLER)(void *userdata,
+					     const vrpn_TRACKERSOFTTEXTURECB info);
+
 //---------------------------------------------------------------------------
 // Class definition
 //---------------------------------------------------------------------------
@@ -56,15 +64,19 @@ public:
 protected:
 	virtual int register_types( void );
 	virtual int encode_hand_to(char *buf, int division);
+	//virtual int encode_softtexture_to(char *buf, int division);
 
 	inline void ObjectMessagePacking( void );
+	//inline void SoftTextureMessagePacking( void );
 	inline void HandMessagePacking( void );
 
 protected:
     struct timeval _timestamp;
 		//Atsushi
+		vrpn_int32 softtexture_m_id;	// ID of tracker soft texture message					
 		vrpn_int32 hand_m_id;	// ID of tracker hand message					
-		vrpn_float32 hand[UDP_LIMITATION][3];		
+		vrpn_float32 hand[UDP_LIMITATION][3];	
+		vrpn_float32 softT[resX*resY][3];
 
 		//for getting bullet coordinate
 		std::vector<btRigidBody*> * m_objects_body;

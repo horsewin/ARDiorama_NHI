@@ -55,6 +55,7 @@ btThreadSupportInterface* createSolverThreadSupport(int maxNumThreads) {
 #include <btBulletDynamicsCommon.h>
 #include <BulletSoftBody/btSoftBodyHelpers.h>
 
+#include <osg/io_utils>
 
 //C++ include
 #include <iostream>
@@ -100,9 +101,10 @@ extern int Virtual_Objects_Count;
 extern vector<int> objVectorDeletable;
 
 int		collide[2];       //indices  of collided objects
-float	pCollision[3];  //coordinate with a collided object
+btVector3	pCollision;  //coordinate with a collided object
+btVector3 pColLocalOnObj;
 int		selector = 0;
-bool	stroke; //(true)non-stroke (false)end stroke
+interaction interact_state = INIT;
 bool	touch; //(true)touch  (false)not touch
 
 btCollisionObject * actualCollisionObject = NULL; //for collision detection
@@ -112,7 +114,13 @@ bool changeCollisionObject = false; //手と物体の間の衝突判定で手の
 btVector3 btHandPos;
 btScalar _timeStep;
 
-//create Collision Callback 
+osg::Vec3d softTexture_array[resX*resY];
+
+std::ostream& operator<<(std::ostream& out, const btVector3 & v) {
+	return out << v.getX() << " " << v.getY() << " " << v.getZ() ;
+}
+
+/** Create Collision Callback  **/
 struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCallback
 {	
 	//! Constructor, pass whatever context you want to have available when processing contacts
@@ -131,36 +139,58 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 	{
 		double current_clock = static_cast<double>(cv::getTickCount());
 		double time_spent = ( current_clock - prev_collide_clock ) / cv::getTickFrequency();
+
+		touch = true;
 		// collision frequency is set to at least 3.0 sec upward
 		//if(true){
-		if( time_spent > 1.0){
-			prev_collide_clock = current_clock;
-			//btVector3 tmp1 = cp.m_positionWorldOnA;
-			btVector3 tmp1 = cp.m_localPointA;
-			btVector3 tmp2 = cp.m_localPointB;
-			
+		if( time_spent > 1.0)
+		{
 
-			cout << "COLLIDE : " << collide_counter <<">> " 
-			<< endl;
+			switch(interact_state)
+			{
+				case INIT:
+					interact_state = STROKE1;
+					break;
+					
+				case KEEP:
+					interact_state = PASTE;
+					break;
+			}
+			//rewrite previous collision time
+			prev_collide_clock = current_clock;
+
+			//get collision position on each object
+			btVector3 tmp1 = cp.getPositionWorldOnA();
+			btVector3 tmp2 = cp.getPositionWorldOnB();
+			
+			//cout << "COLLIDE : " << collide_counter << endl;
 
 			if(!changeCollisionObject)
 			{
-				pCollision[0] = tmp1.getX()*10;
-				pCollision[1] = tmp1.getY()*10;
-				pCollision[2] = tmp1.getZ()*10;
+				pColLocalOnObj = colObj0->getWorldTransform().getOrigin() - tmp1;
+				pCollision = tmp1 * 10;
+				//cout << "pColWorldOn " << colObj0->getWorldTransform().getOrigin() << endl;
+				//cout << "pCollision " << tmp1 << endl;
 				//TODO const_castを使わない方法
 				// 現在衝突しているオブジェクトのポインタを保存
 				actualCollisionObject = const_cast<btCollisionObject * >(colObj0);
 
+				osg::Vec3 pos = osgbCollision::asOsgVec3( cp.getPositionWorldOnA() ); // position of the collision on object A
+				//osg::notify( osg::ALWAYS ) << "\tPosition: " << pos << std::endl;
+
 			}
 			else
 			{
-				pCollision[0] = tmp2.getX()*10;
-				pCollision[1] = tmp2.getY()*10;
-				pCollision[2] = tmp2.getZ()*10;
+				pColLocalOnObj = colObj1->getWorldTransform().getOrigin() - tmp2;
+				pCollision = tmp2 * 10;
+				//cout << "pColWorldOn " << colObj1->getWorldTransform().getOrigin() << endl;
+				//cout << "pCollision " << tmp2 << endl;
 				//TODO const_castを使わない方法
 				// 現在衝突しているオブジェクトのポインタを保存
 				actualCollisionObject = const_cast<btCollisionObject * >(colObj1);
+
+				osg::Vec3 pos = osgbCollision::asOsgVec3( cp.getPositionWorldOnB() ); // position of the collision on object B
+				//osg::notify( osg::ALWAYS ) << "\tPosition: " << pos << std::endl;
 			}
 
 			collide_counter++;
@@ -169,7 +199,8 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 		return 0; // not actually sure if return value is used for anything...?
 	}
 };
-/** \cond */
+/** create Collision Callback **/
+
 struct MeshUpdater : public osg::Drawable::UpdateCallback
 {
     MeshUpdater(  btSoftBody* softBody, const unsigned int size )
@@ -199,15 +230,19 @@ struct MeshUpdater : public osg::Drawable::UpdateCallback
 		}
 
 		nodes[idx].m_v *= 0;
-		nodes[idx].m_v += (delta/_timeStep)*10;
+		nodes[idx].m_v += (delta/_timeStep)*50;
+		//printf("nodes=(%f,%f,%f)\n",nodes[idx].m_x.getX(),nodes[idx].m_x.getY(),nodes[idx].m_x.getZ());
 
 		//nodes[idx].m_x.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
+		//goal.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
 
 		for( idx=0; idx<_size; idx++)
         {
-            *it++ = osgbCollision::asOsgVec3( nodes[ idx ].m_x );
+		/*	softTexture_array[idx] = osgbCollision::asOsgVec3( nodes[ idx ].m_x );
+        */    *it++ = softTexture_array[idx];
+			*it++ = osg::Vec3d(nodes[ idx ].m_x.getX(), nodes[ idx ].m_x.getY(), nodes[ idx ].m_x.getZ());
         }
-        verts->dirty();
+		verts->dirty();
         draw->dirtyBound();
 
         // Generate new normals.
@@ -220,6 +255,8 @@ struct MeshUpdater : public osg::Drawable::UpdateCallback
     const unsigned int _size;
 };
 /** \endcond */
+
+
 
 void pickingPreTickCallback (btDynamicsWorld *world, btScalar timeStep)
 {
@@ -258,13 +295,14 @@ bt_ARMM_world::bt_ARMM_world(void)
 {
 
 	hasInit = false;
-  stroke  = true;
-  touch   = false;
+	touch   = false;
 
-  //initialize flags for detecting collision
-  for(int i=0; i<2; i++){
-    collide[i] = 0;
-  }
+	//initialize flags for detecting collision
+	REP(i,2)
+	{
+		collide[i] = 0;
+	}
+
 	//m_vehicle.push_back(0);
 	//m_wheelShape.push_back(0);
 	count = 0;
@@ -272,7 +310,7 @@ bt_ARMM_world::bt_ARMM_world(void)
 	upIndex = 2; 
 	forwardIndex = 1;
 
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 
 	wheelDirectionCS0[0] = btVector3(0,0,-1);
 	wheelAxleCS[0] = btVector3(1,0,0);
@@ -334,7 +372,7 @@ bt_ARMM_world::bt_ARMM_world(void)
 	Car_Array[1].wheelWidthOffsetFront = 1.3f;
 	Car_Array[1].wheelWidthOffsetBack = 1.2f;
 
-#endif /*SIM_MICROMACHINE*/
+#endif /* CAR_SIMULATION == 1*/
 
 	worldDepth = 0;
 	m_rawHeightfieldData = new float[GRID_SIZE];
@@ -453,6 +491,7 @@ m_threadSupportCollision = new Win32ThreadSupport(Win32ThreadSupport::Win32Threa
 	//m_dynamicsWorld = new btDiscreteDynamicsWorld(m_dispatcher,m_overlappingPairCache,m_constraintSolver,m_collisionConfiguration);
 	//m_dynamicsWorld->getSolverInfo().m_solverMode |= SOLVER_SIMD | SOLVER_USE_WARMSTARTING | SOLVER_USE_2_FRICTION_DIRECTIONS;
 	//m_dynamicsWorld->getSolverInfo().m_splitImpulse=true;
+
 	//for cloth rendering by Atsushi.U 2012/07/28
 	m_dynamicsWorld = new btSoftRigidDynamicsWorld(m_dispatcher, m_overlappingPairCache, m_constraintSolver, m_SoftCollisionConfiguration);
 #ifdef USE_PARALLEL_SOLVER
@@ -608,6 +647,10 @@ void bt_ARMM_world::Update()
   DecideCollisionCondition();
 
 #ifdef SIM_MICROMACHINE
+
+	//for debug to emerge the error of collision coord
+  	//m_carChassis.at(0)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(pCollision[0], pCollision[1], pCollision[2])));
+	
 	setCarMovement();
 	for (int i = 0; i < NUM_CAR; i++) {
 		for (int j=0; j < m_vehicle.at(i)->getNumWheels(); j++) {
@@ -645,7 +688,7 @@ void bt_ARMM_world::Update()
 
 	//start simulation
 	m_dynamicsWorld->stepSimulation(1/20.f,5); //60s
-	m_dynamicsWorld->performDiscreteCollisionDetection();
+	//m_dynamicsWorld->performDiscreteCollisionDetection();
 	m_worldInfo.m_sparsesdf.GarbageCollect();
 }
 
@@ -774,11 +817,9 @@ void bt_ARMM_world::setWorldScale(float scale) {
 	world_scale = scale;
 }
 
-int bt_ARMM_world::create_Sphere() {
+int bt_ARMM_world::create_Sphere() 
+{
 	float sphereMass = 50;
-//	Convex_Shape.push_back(new btConvexHullShape());//place holder
-//	int shape_index = Convex_Shape.size()-1;
-//	float scale = 2;
 	Sphere_Shape =  new btSphereShape(SPHERE_SIZE_);
 	m_collisionShapes.push_back(Sphere_Shape);
 	ObjectsMotionState.push_back(new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0))));
@@ -786,7 +827,7 @@ int bt_ARMM_world::create_Sphere() {
 	Sphere_Shape->calculateLocalInertia(sphereMass, localInertia);
 
 	int index = ObjectsMotionState.size()-1;
-  btRigidBody::btRigidBodyConstructionInfo Sphere_Body_CI(sphereMass,ObjectsMotionState.at(index),Sphere_Shape,localInertia);
+	btRigidBody::btRigidBodyConstructionInfo Sphere_Body_CI(sphereMass,ObjectsMotionState.at(index),Sphere_Shape,localInertia);
 	m_objectsBody.push_back(new btRigidBody(Sphere_Body_CI));
 
 	m_dynamicsWorld->addRigidBody(m_objectsBody.at(index));
@@ -835,7 +876,8 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0))); 
 	btRigidBody* btObject = new btRigidBody(50, state, NULL);
 	btObject->setCollisionShape( osgbCollision::btTriMeshCollisionShapeFromOSG(sample.get() ) );
-	btObject->setCollisionFlags(  btCollisionObject::CF_KINEMATIC_OBJECT );
+	btObject->setCollisionFlags( btCollisionObject::CF_KINEMATIC_OBJECT );
+
 	m_objectsBody.push_back(btObject);
 	m_dynamicsWorld->addRigidBody(btObject);
 
@@ -849,8 +891,6 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 
 osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
 {
-	const short resX( 12 ), resY( 9 );
-
     osg::ref_ptr< osg::Geode > geode( new osg::Geode );
     const osg::Vec3 llCorner( 130.0, -5.0, 0.0 );
     const osg::Vec3 uVec( 100.0, 0.0, 0.0 );
@@ -873,7 +913,7 @@ osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
         lm->setTwoSided( true );
         stateSet->setAttributeAndModes( lm );
 
-        const std::string texName( "Data/celica.bmp" );
+        const std::string texName( "Data/tex.bmp" );
         osg::Texture2D* tex( new osg::Texture2D(
             osgDB::readImageFile( texName ) ) );
         if( ( tex == NULL ) || ( tex->getImage() == NULL ) )
@@ -1112,79 +1152,88 @@ void bt_ARMM_world::DecideCollisionCondition()
   btCollisionObjectArray colObjs = m_dynamicsWorld->getCollisionObjectArray();
   int collisionSize= colObjs.size();
   
-  //initial collisionInd value is '-1'
-  if( collisionInd > 0 && stroke && !touch)
-  {
-    //[Collide some object]->[release it]
-    // it make system unable to stroke
-    cout << "stroke value changed TRUE to FALSE " << endl;
-    stroke = false;
-  }
-
-	
-
-  for(int i=0; i<collisionSize; i++)
-  {
-    if(colObjs[i] == actualCollisionObject )
+	//set touch value to false if no collision continues for 2 sec
+	double current_clock = static_cast<double>(cv::getTickCount());
+	double time_spent = ( current_clock - prev_collide_clock ) / cv::getTickFrequency();
+	if(time_spent > 1.5)
 	{
-		//except for a regular object, such hand objects or cars
-		if( i < REGULAROBJECTNUM)
+		touch = false;
+	}
+
+
+	if( collisionInd > 0 && interact_state==STROKE1 && !touch)
+	{
+		//[Collide some object]->[release it]
+		// it make system unable to stroke
+		cout << "Interaction state changed STROKE to PINCH" << endl;
+		interact_state = PINCH;
+	}
+
+	if( interact_state==PASTE && !touch)
+	{
+		//[Collide some object]->[release it]
+		// it make system unable to stroke
+		cout << "Interaction state changed STROKE to PINCH" << endl;
+		interact_state = PINCH;
+	}	
+
+	for(int i=0; i<collisionSize; i++)
+	{
+		if(colObjs[i] == actualCollisionObject )
 		{
-			changeCollisionObject = true;
+			//except for a regular object, such hand objects or cars
+			if( i < REGULAROBJECTNUM)
+			{
+				changeCollisionObject = true;
+				return;
+			}
+
+		  //1回目の接触
+			if( interact_state == STROKE1)
+			{
+				cout << " Collision to " << i << " in " 
+					<< pCollision << ","
+					<< endl;  
+			}
+			else
+			{
+
+				//2回目の接触 <sourceオブジェクト決定>
+				if( i == collisionInd && interact_state == PINCH )
+				{
+					cout << " Collision to " << collisionInd << " with parts" <<  " in " 
+					<< pCollision << ","
+					<< endl;
+
+					interact_state = KEEP;
+				}
+				//3回目の接触 <destinationオブジェクト決定>
+				else
+				{
+					cout << " Collision to " << i << " and finished transfer from " << collisionInd <<  " in " 
+					<< pCollision << ","
+					<< endl;
+
+					interact_state = PASTE;
+				}
+			}
+
+			collisionInd = i;
+			actualCollisionObject = NULL;
+
+			if( selector > 0 && i != collide[0])
+			{
+				collide[1] = i;
+				///        selector = 0;
+			}
+			else
+			{
+				collide[0] = i;
+				selector = 1;
+			}
 			return;
 		}
+	}
 
-      touch = true; //必要かどうかわからないが一応trueに設定
-
-      if(stroke)
-      {
-
-        cout << " Collision with " << i << " in " 
-          << pCollision[0] << ","
-          << pCollision[1] << ","
-          << pCollision[2] << ","
-          << endl;
-  
-      }
-      else
-      {
-        if( i == collisionInd){
-            cout << " Collision with " << i << " with parts" << endl;
-        }
-        else
-        {
-          cout << " Collision with " << i << " and finished transfer from " << collisionInd <<  " in " 
-          << pCollision[0] << ","
-          << pCollision[1] << ","
-          << pCollision[2] << ","
-          << endl;
-        }
-      }
-
-      collisionInd = i;
-      actualCollisionObject = NULL;
-
-      if( selector > 0 && i != collide[0]){
-        collide[1] = i;
-///        selector = 0;
-      }
-      else
-      {
-        collide[0] = i;
-        selector = 1;
-      }
-      return;
-    }
-  }
-
-  changeCollisionObject = false;
-
-  //any collision objects is not touching with hands
-  double current_clock = static_cast<double>(cv::getTickCount());
-  double time_spent = ( current_clock - prev_collide_clock ) / cv::getTickFrequency();
-  if( time_spent > 1.0)
-  {
-    touch = false;
-  }
-
+	changeCollisionObject = false;
 }

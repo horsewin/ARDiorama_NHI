@@ -54,7 +54,10 @@
 const int MAX_FPS = 100;
 
 extern int collide[2];
-extern float pCollision[3];
+extern btVector3 pCollision;
+extern int collisionInd;
+extern interaction interact_state;
+extern bool touch;
 
 using namespace std; 
 using namespace xn;
@@ -73,6 +76,7 @@ FlowCapture * flow_capture;
 #endif
 
 bool running = true;
+
 bool loadKinectParams(char *filename, CvMat **params, CvMat **distortion);
 void loadKinectTransform(char *filename);
 osg::Node* osgNodeFromBtCollisionShape( const btConvexHullShape* hull, const btTransform& trans );
@@ -111,11 +115,13 @@ std::vector <CvRect>	cont_boundbox;
 std::vector <CvBox2D> cont_boundbox2D; 
 std::vector <CvPoint> cont_center;
 
+#if CAR_SIMULATION == 1
 //Graphical objects
 osg::Quat CarsOrientation[NUM_CAR];
 osg::Quat WheelsOrientaion[NUM_CAR][NUM_WHEEL];
 osg::Vec3d CarsPosition[NUM_CAR];
 osg::Vec3d WheelsPosition[NUM_CAR][NUM_WHEEL];
+#endif /* CAR_SIMULATION == 1 */
 
 int input_key;
 
@@ -210,7 +216,8 @@ namespace{
 	}
 }
 
-inline CvMat* scaleParams(CvMat *cParams, double scaleFactor) {
+inline CvMat* scaleParams(CvMat *cParams, double scaleFactor) 
+{
 	CvMat *sParams = cvCloneMat(cParams);
 	sParams->data.db[0]*= scaleFactor;	sParams->data.db[4]*= scaleFactor;
 	sParams->data.db[2]*= scaleFactor;	sParams->data.db[5]*= scaleFactor;
@@ -336,9 +343,11 @@ int main(int argc, char* argv[])
 #endif
 
 /////////////////////////////////////////////Main Loop////////////////////////////////////////////////
-	while (running) {
+	while (running) 
+	{
     //start kinect
-		if (XnStatus rc = niContext.WaitAnyUpdateAll() != XN_STATUS_OK) {
+		if (XnStatus rc = niContext.WaitAnyUpdateAll() != XN_STATUS_OK) 
+		{
 			printf("Read failed: %s\n", xnGetStatusString(rc));
 			return rc;
 		}
@@ -461,41 +470,57 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-void RenderScene(IplImage *arImage, Capture *capture) {
-		float scale = 10;
-#ifdef SIM_MICROMACHINE
-		for(int i = 0; i < NUM_CAR; i++) {
-			btTransform trans = m_world->getCarPose(i);
-			btQuaternion quat = trans.getRotation();
-			CarsOrientation[i] = osg::Quat(quat.getX(), quat.getY(), quat.getZ(), quat.getW()); 
-			CarsPosition[i] = osg::Vec3d(trans.getOrigin().getX()*scale, trans.getOrigin().getY()*scale,trans.getOrigin().getZ()*scale);
-			for(int j = 0; j < 4; j++) {
-				btTransform trans_tmp = m_world->getWheelTransform(i,j);
-				btQuaternion quattmp = trans_tmp.getRotation();
-				WheelsOrientaion[i][j] = osg::Quat(quattmp.getX(), quattmp.getY(), quattmp.getZ(), quattmp.getW()); 	
-				WheelsPosition[i][j] = osg::Vec3d(trans_tmp.getOrigin().getX()*scale, trans_tmp.getOrigin().getY()*scale,trans_tmp.getOrigin().getZ()*scale);
-			}
+void RenderScene(IplImage *arImage, Capture *capture) 
+{
+	float scale = 10;
+	osg::Vec3d worldVec;
+#if CAR_SIMULATION == 1
+	for(int i = 0; i < NUM_CAR; i++) {
+		//get cars position and orientation
+		btTransform trans = m_world->getCarPose(i);
+		btQuaternion quat = trans.getRotation();
+		CarsOrientation[i] = osg::Quat(quat.getX(), quat.getY(), quat.getZ(), quat.getW()); 
+		CarsPosition[i]	   = osg::Vec3d(trans.getOrigin().getX()*scale, trans.getOrigin().getY()*scale,trans.getOrigin().getZ()*scale);
+		//get wheels of each car position and orientation
+		for(int j = 0; j < 4; j++) {
+			btTransform trans_tmp = m_world->getWheelTransform(i,j);
+			btQuaternion quattmp = trans_tmp.getRotation();
+			WheelsOrientaion[i][j] = osg::Quat(quattmp.getX(), quattmp.getY(), quattmp.getZ(), quattmp.getW()); 	
+			WheelsPosition[i][j] = osg::Vec3d(trans_tmp.getOrigin().getX()*scale, trans_tmp.getOrigin().getY()*scale,trans_tmp.getOrigin().getZ()*scale);
 		}
-		if(Virtual_Objects_Count > 0) {
-			if(!objVectorDeletable.empty()){
-				for(int i= objVectorDeletable.size()-1; i>=0; i--)
-				{	
-					DeleteVirtualObject(objVectorDeletable[i]);
-				}
-				objVectorDeletable.clear();
+	}
+#endif /* CAR_SIMULATION == 1 */
+
+	if(Virtual_Objects_Count > 0) 
+	{
+		if(!objVectorDeletable.empty()){
+			for(int i= objVectorDeletable.size()-1; i>=0; i--)
+			{	
+				DeleteVirtualObject(objVectorDeletable[i]);
 			}
+			objVectorDeletable.clear();
+		}
 
+		if( interact_state == PINCH && touch)
+		{
+			interact_state = KEEP;
 
-      //if( collide[0] >= 1 && collide[1] >= 1)
-      //{
-      //  DeleteVirtualObject(0);
-      //  collide[0] = 0;
-      //  collide[1] = 0;
-      //  kc->check_input(80);
-      //}
+			//add soft texture object into the environment
+			kc->check_input(66); //B
+		}
+		//if( collide[0] >= 1 && collide[1] >= 1)
+		//{
+		//  DeleteVirtualObject(0);
+		//  collide[0] = 0;
+		//  collide[1] = 0;
+		//  kc->check_input(80);
+		//}
 
 		std::vector <osg::Quat> quat_obj_array;
 		std::vector <osg::Vec3d> vect_obj_array;
+
+		quat_obj_array.clear();
+		vect_obj_array.clear();
 
 		for(int i = 0; i < Virtual_Objects_Count; i++) 
 		{
@@ -503,24 +528,37 @@ void RenderScene(IplImage *arImage, Capture *capture) {
 			btQuaternion quat2 = trans2.getRotation();
 			quat_obj_array.push_back(osg::Quat(quat2.getX(), quat2.getY(), quat2.getZ(), quat2.getW())); 
 			vect_obj_array.push_back(osg::Vec3d(trans2.getOrigin().getX()*scale, trans2.getOrigin().getY()*scale,trans2.getOrigin().getZ()*scale));		
+			//vect_obj_array.push_back( osgbCollision::asOsgVec3(trans2.getOrigin()));		
+
+			////for debug for collision
+			//if(collisionInd >= 444){
+			//	osg::Node * node = obj_node_array.at(0);		
+			//	osg::NodePathList paths = node->getParentalNodePaths();
+			//	osg::Matrix world2local = osg::computeWorldToLocal(paths.at(paths.size()-1));
+			//	osg::Vec3d localVec = worldVec * world2local;
+			//	//printf("(%d)%f,%f,%f -- %f,%f,%f\n",obj_node_array.size(),localVec.x(), localVec.y(), localVec.z(), vect_obj_array[0].x(), vect_obj_array[0].y(), vect_obj_array[0].z());
+			//}
 		}
+#if CAR_SIMULATION == 1
 		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion(), quat_obj_array, vect_obj_array);
+#else 
+		osg_render(arImage, NULL, NULL, NULL, NULL, RegistrationParams, capture->getDistortion(), quat_obj_array, vect_obj_array);
+#endif /* CAR_SIMULATION == 1 */
 	} 
-	else
+
+	else // if(Virtual_Objects_Count > 0) 
 	{
+#if CAR_SIMULATION == 1
 		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion());
-	}
 #else
-		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion());
-#endif /*SIM_MICROMACHINE*/
-
-		//osg::Matrix mat_view = viewer.getCamera()->getViewMatrix();
-		//osg::Matrix mat_proj = viewer.getCamera()->getProjectionMatrix();
-
+		osg_render(arImage, NULL, NULL, NULL, NULL, RegistrationParams, capture->getDistortion());
+#endif /* CAR_SIMULATION == 1 */
+	}
 }
 
 
-bool loadKinectParams(char *filename, CvMat **params, CvMat **distortion) {
+bool loadKinectParams(char *filename, CvMat **params, CvMat **distortion) 
+{
 	CvFileStorage* fs = cvOpenFileStorage( filename, 0, CV_STORAGE_READ );
 	if (fs==0) return false; 
 
@@ -537,7 +575,8 @@ bool loadKinectParams(char *filename, CvMat **params, CvMat **distortion) {
 	return true;
 }
 
-void loadKinectTransform(char *filename) {
+void loadKinectTransform(char *filename) 
+{
 	CvFileStorage* fs = cvOpenFileStorage( filename, 0, CV_STORAGE_READ );
 	if (fs!=0) {
 		CvSeq *s = cvGetFileNodeByName(fs, 0, "MarkerSize")->data.seq;
@@ -721,15 +760,18 @@ void inpaintDepth(DepthMetaData *niDepthMD, bool halfSize) {
 	cvReleaseImage(&depthIm);
 }
 
-void setWorldOrigin() {
+void setWorldOrigin() 
+{
 	WORLD_ORIGIN_X = marker_origin.x/4; WORLD_ORIGIN_Y = marker_origin.y/4; 
 	//WORLD_ORIGIN_X = marker_origin.x/2; WORLD_ORIGIN_Y = marker_origin.y/2; 
 	center_trimesh = cvPoint2D32f(WORLD_ORIGIN_X, WORLD_ORIGIN_Y);
 	m_world->set_center_trimesh(WORLD_ORIGIN_X,WORLD_ORIGIN_Y);
 }
 
-void registerMarker() {
-	if (calcKinectOpenGLTransform(colourIm, depthIm, &kinectTransform)) {
+void registerMarker() 
+{
+	if (calcKinectOpenGLTransform(colourIm, depthIm, &kinectTransform)) 
+	{
 		//Load in the marker for registration
 		osg_inittracker(MARKER_FILENAME, 400, markerSize.width);	
 
@@ -784,20 +826,22 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 		for ( int j = 0 ; j < transDepth320->width ; j ++ )
 		{
 			float depth_ =  CV_IMAGE_ELEM(transDepth320, float, i, j);
-			if( depth_ > 20){
+
+			// dist from ground is larger than 30cm => removing the pixel
+			if( depth_ > 30){
 				CV_IMAGE_ELEM(transDepth320, float, i, j) = 0;
 			}
 		}
 	}
 
 	//----->Threshold at marker's depth
-	cvThreshold(transDepth320, depthTmp, 2, 255, CV_THRESH_BINARY_INV); //thres at 1cm above marker
+	cvThreshold(transDepth320, depthTmp, 1, 255, CV_THRESH_BINARY_INV); //thres at 1cm above marker
 	cvResize(transColor320, colourImResized);
 	cvSet(colourImResized, cvScalar(0), depthTmp);
 	cvResize(colourImResized, colourIm640, CV_INTER_NN);
 
   //----->Segment skin color
-	cont_num = MAX_NUM_HANDS;//up to 6 contours
+	cont_num = MAX_NUM_HANDS;//up to MAX_NUM_HANDS contours
 	cvCopyImage( _HandRegion.GetHandRegion( colourImResized, &cont_num,cont_boundbox, cont_boundbox2D, cont_center), depthTmp);
 	cvThreshold(depthTmp, depthTmp, 0, 255, CV_THRESH_BINARY_INV);	
 	cvSet(colourImResized, cvScalar(0), depthTmp); //apply Hand mask image to colour image

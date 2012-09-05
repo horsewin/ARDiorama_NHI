@@ -117,7 +117,7 @@ public:
 
 		btSoftBody* textureSoftBody;
 
-public:
+	public:
 		bt_ARMM_world(void);
 		virtual ~bt_ARMM_world(void);
 		virtual void Update();

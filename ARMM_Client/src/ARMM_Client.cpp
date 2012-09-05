@@ -135,7 +135,7 @@ ARMMClient::ARMMClient (const char * name, vrpn_Connection *cn)
 		hand_coord_z[0][i] = 0.0;
 	}
 		
-	cout << "Hand ID = " << hand_m_id << endl;
+	//cout << "Hand ID = " << hand_m_id << endl;
 }
 
 //virtual
@@ -202,7 +202,10 @@ int ARMMClient::register_types(void)
 	//vrpn_Tracker_Remote::register_types();
 
 	// to handle hand state changes
-	hand_m_id = d_connection->register_message_type("vrpn_Tracker Hand");
+	//hand_m_id = d_connection->register_message_type("vrpn_Tracker Hand");
+
+	hand_m_id = d_connection->register_message_type("vrpn_Tracker Hand SoftTexture");
+
 	return 0;
 }
 
@@ -257,6 +260,8 @@ int VRPN_CALLBACK ARMMClient::handle_hand_change_message(
 	//}
 	return 0;
 }
+
+
 ///////// End of ARMM_Client definition ////////////////
 
 inline CvMat* scaleParams(CvMat *cParams, double scaleFactor) {

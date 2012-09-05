@@ -1,25 +1,30 @@
 #ifndef OSG_H
 #define OSG_H
 
-#define SIM_MICROMACHINE 1
-
 #include <osgViewer/Viewer>
 #include <osgViewer/ViewerEventHandlers>
 #include <osg/Texture2D>
 #include <osg/Geode>
 #include <osg/Geometry>
 #include <osg/PolygonMode>
-#include <osgDB/ReadFile>
 #include <osg/ShapeDrawable>
-#include <osgShadow/ShadowedScene>
-#include "MyShadowMap.h"
 #include <osg/MatrixTransform>
 #include <osg/PositionAttitudeTransform>
 #include <osg/io_utils>
 #include <osg/Depth>
+#include <osg/Notify>
+#include <osg/Billboard>
+#include <osg/LineWidth>
+#include <osgDB/ReadFile>
+#include <osgShadow/ShadowedScene>
+#include "MyShadowMap.h"
+
 #include <map>
 #include <sstream>
 #include <iostream>
+
+#include <osgbCollision/CollisionShapes.h>
+#include <osgbCollision/Utils.h>
 
 #include "OPIRALibraryMT.h"
 #include "RegistrationAlgorithms\OCVSurf.h"
@@ -190,8 +195,10 @@ public:
 	unsigned int castShadowMask = 0x2;
 
 	int celicaIndex;
+#if CAR_SIMULATION == 1
 	std::vector<osg::PositionAttitudeTransform*> car_transform;
 	std::vector<osg::PositionAttitudeTransform*> wheel_transform[NUMBER_CAR];
+#endif /* CAR_SIMULATION == 1 */
 	std::vector<osg::PositionAttitudeTransform*> obj_transform_array;
 
 	std::vector<osg::PositionAttitudeTransform*> hand_object_global_array;
@@ -204,7 +211,116 @@ public:
 	osgViewer::Viewer viewer;
 
 
-void osg_init(double *projMatrix) {
+
+/** create quad at specified position. */
+osg::Drawable* createSquare(const osg::Vec3& corner,const osg::Vec3& width,const osg::Vec3& height, osg::Image* image=NULL)
+{
+    // set up the Geometry.
+    osg::Geometry* geom = new osg::Geometry;
+
+    osg::Vec3Array* coords = new osg::Vec3Array(4);
+    (*coords)[0] = corner;
+    (*coords)[1] = corner+width;
+    (*coords)[2] = corner+width+height;
+    (*coords)[3] = corner+height;
+
+
+    geom->setVertexArray(coords);
+
+    osg::Vec3Array* norms = new osg::Vec3Array(1);
+    (*norms)[0] = width^height;
+    (*norms)[0].normalize();
+    
+    geom->setNormalArray(norms);
+    geom->setNormalBinding(osg::Geometry::BIND_OVERALL);
+
+    osg::Vec2Array* tcoords = new osg::Vec2Array(4);
+    (*tcoords)[0].set(0.0f,0.0f);
+    (*tcoords)[1].set(1.0f,0.0f);
+    (*tcoords)[2].set(1.0f,1.0f);
+    (*tcoords)[3].set(0.0f,1.0f);
+    geom->setTexCoordArray(0,tcoords);
+    
+    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,4));
+    
+    if (image)
+    {
+        osg::StateSet* stateset = new osg::StateSet;
+        osg::Texture2D* texture = new osg::Texture2D;
+        texture->setImage(image);
+        stateset->setTextureAttributeAndModes(0,texture,osg::StateAttribute::ON);
+        geom->setStateSet(stateset);
+    }
+    
+    return geom;
+}
+
+osg::Drawable* createAxis(const osg::Vec3& corner,const osg::Vec3& xdir,const osg::Vec3& ydir,const osg::Vec3& zdir)
+{
+    // set up the Geometry.
+    osg::Geometry* geom = new osg::Geometry;
+
+    osg::Vec3Array* coords = new osg::Vec3Array(6);
+    (*coords)[0] = corner;
+    (*coords)[1] = corner+xdir;
+    (*coords)[2] = corner;
+    (*coords)[3] = corner+ydir;
+    (*coords)[4] = corner;
+    (*coords)[5] = corner+zdir;
+
+    geom->setVertexArray(coords);
+
+    osg::Vec4 x_color(1.0f,.0f,.0f,1.0f);
+    osg::Vec4 y_color(0.0f,1.0f,.0f,1.0f);
+    osg::Vec4 z_color(.0f,0.0f,1.0f,1.0f);
+
+    osg::Vec4Array* color = new osg::Vec4Array(6);
+    (*color)[0] = x_color;
+    (*color)[1] = x_color;
+    (*color)[2] = y_color;
+    (*color)[3] = y_color;
+    (*color)[4] = z_color;
+    (*color)[5] = z_color;
+    
+    geom->setColorArray(color);
+    geom->setColorBinding(osg::Geometry::BIND_PER_VERTEX);
+    
+    geom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINES,0,6));
+    
+    osg::StateSet* stateset = new osg::StateSet;
+    osg::LineWidth* linewidth = new osg::LineWidth();
+    linewidth->setWidth(14.0f);
+    stateset->setAttributeAndModes(linewidth,osg::StateAttribute::ON);
+    stateset->setMode(GL_LIGHTING,osg::StateAttribute::OFF);
+    geom->setStateSet(stateset);
+    
+    return geom;
+}
+
+osg::Node* createMilestone()
+{
+    // create the root node which will hold the model.
+    osg::Group* milestone = new osg::Group();
+
+    // add the drawable into a single goede to be shared...
+    osg::Billboard* center = new osg::Billboard();
+    center->setMode(osg::Billboard::POINT_ROT_EYE);
+    center->addDrawable(
+        createSquare(osg::Vec3(-0.5f,0.0f,-0.5f),osg::Vec3(1.0f,0.0f,0.0f),osg::Vec3(0.0f,0.0f,1.0f),osgDB::readImageFile("Images/reflect.rgb")),
+        osg::Vec3(0.0f,0.0f,0.0f));
+        
+    osg::Geode* axis = new osg::Geode();
+    axis->addDrawable(createAxis(osg::Vec3(0.0f,0.0f,0.0f),osg::Vec3(150.0f,0.0f,0.0f),osg::Vec3(0.0f,150.0f,0.0f),osg::Vec3(0.0f,0.0f,150.0f)));
+
+
+    milestone->addChild(center);
+    milestone->addChild(axis);
+
+    return milestone;
+}
+
+void osg_init(double *projMatrix) 
+{
 	mVideoImage = new osg::Image();
 	mGLImage = cvCreateImage(cvSize(512,512), IPL_DEPTH_8U, 3);
 
@@ -278,7 +394,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 
 	arTrackedNode->removeChildren(0,arTrackedNode->getNumChildren());
 
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 	osg::ref_ptr<osg::Node> car1 = osgDB::readNodeFile(CAR1_BODY_FILENAME);
 	if( !car1 ){
 		std::cerr << "Model cound not be loaded!" << std::endl;
@@ -308,11 +424,10 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 		wheel_tmp_trans1.at(i)->setPosition(osg::Vec3d(0.0, 0.0, 0.0));
 		wheel_transform[0].push_back(new osg::PositionAttitudeTransform); 
 		wheel_transform[0].at(i)->setNodeMask(castShadowMask );
-		//wheel_transform[0].at(i)->setNodeMask(rcvShadowMask );
 		wheel_transform[0].at(i)->addChild(wheel_tmp_trans1.at(i));
 	}
 
-	//begin car 2	
+	//begin car 2--->
 	osg::Node *car2 = osgDB::readNodeFile(CAR2_BODY_FILENAME);
 	osg::PositionAttitudeTransform * car_trans2 = new osg::PositionAttitudeTransform();
 	car_trans2->setAttitude(osg::Quat(
@@ -340,24 +455,21 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 		wheel_transform[1].push_back(new osg::PositionAttitudeTransform); 
 
 		wheel_transform[1].at(i)->setNodeMask(castShadowMask );
-		//wheel_transform[1].at(i)->setNodeMask(rcvShadowMask );
 		wheel_transform[1].at(i)->addChild(wheel_tmp_trans2.at(i));
 	}
-	//end car 2
+	//<---end car 2
 
 	car_transform.push_back(new osg::PositionAttitudeTransform());
 	car_transform.at(0)->setAttitude(osg::Quat(0,0,0,1));
 	car_transform.at(0)->addChild(car_trans1);
 	car_transform.at(0)->setNodeMask(castShadowMask );
-	//car_transform.at(0)->setNodeMask(rcvShadowMask );
 
 	car_transform.push_back(new osg::PositionAttitudeTransform());
 	car_transform.at(1)->setAttitude(osg::Quat(0,0,0,1));
 	car_transform.at(1)->addChild(car_trans2);
 	car_transform.at(1)->setNodeMask(castShadowMask );
-	//car_transform.at(1)->setNodeMask(rcvShadowMask );
 
-#endif /*SIM_MICROMACHINE*/
+#endif /* CAR_SIMULATION == 1 */
 
 	// Set shadow node
 //V	osg::ref_ptr<osgShadow::ShadowTexture> sm = new osgShadow::ShadowTexture;
@@ -377,7 +489,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 //V	source->getLight()->setDiffuse( osg::Vec4(0.8, 0.8, 0.8, 1.0) );
 //V	shadowedScene->addChild(source);
 
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 	shadowedScene->addChild( car_transform.at(0) );
 	shadowedScene->addChild( car_transform.at(1) );
 
@@ -386,7 +498,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 			shadowedScene->addChild(wheel_transform[i].at(j));
 		}
 	} 
-#endif /*SIM_MICROMACHINE*/
+#endif /* CAR_SIMULATION == 1 */
 	celicaIndex = arTrackedNode->addMarkerContent(markerName, maxLengthSize, maxLengthScale, shadowedScene);
 	arTrackedNode->setVisible(celicaIndex, true);
 
@@ -405,11 +517,13 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 		//Set the Heightfield to be alpha invisible
 		HeightFieldGeometry_quad->setColorBinding(osg::Geometry::BIND_OVERALL); 
 		HeightFieldGeometry_line->setColorBinding(osg::Geometry::BIND_OVERALL); 
+
 		//osg::Vec4Array* col = new osg::Vec4Array(); 
 		HeightFieldGeometry_quad->setColorArray(groundQuadColor); 
 		HeightFieldGeometry_line->setColorArray(groundLineColor);
 		groundQuadColor->push_back(osg::Vec4(1,1,1,0.0));
 		groundLineColor->push_back(osg::Vec4(1,1,1,0.0));
+
 		//Create the containing geode
 		osg::ref_ptr< osg::Geode > geode = new osg::Geode(); 
 		geode->addDrawable(HeightFieldGeometry_quad);
@@ -425,20 +539,21 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 
 		//Set up the depth testing for the landscale
 		osg::Depth * depth = new osg::Depth();
-		depth->setWriteMask(true); depth->setFunction(osg::Depth::Function::LEQUAL);
+		depth->setWriteMask(true); 
+		depth->setFunction(osg::Depth::Function::LEQUAL);
 		mt->getOrCreateStateSet()->setAttributeAndModes(depth, osg::StateAttribute::ON);
 
 		//Set up the shadow masks
 		mt->setNodeMask( rcvShadowMask );
 		mt->getOrCreateStateSet()->setRenderBinDetails(0, "RenderBin");
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 		car_transform.at(0)->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 		car_transform.at(1)->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 		for(int w=0; w<4; w++){
 			wheel_transform[0].at(w)->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 			wheel_transform[1].at(w)->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 		}
-#endif /*SIM_MICROMACHINE*/
+#endif /* CAR_SIMULATION == 1 */
 		shadowedScene->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 
 		//At the heightmap twice, once for shadowing and once for occlusion
@@ -447,6 +562,12 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 	}
 /*Adrian*/
 	hasInit = true;
+
+	/* DEBUG code */
+	//for confirmation about the direction of axis
+	//osg::Node * axis = createMilestone();
+	//axis->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
+	//shadowedScene->addChild(axis);
 }
 
 /*osg_render for debuf gesture*/
@@ -475,7 +596,7 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 	mVideoImage->setImage(mGLImage->width, mGLImage->height, 0, 3, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)mGLImage->imageData, osg::Image::NO_DELETE);
 	//printf("1:%.2f  %.2f  %.2f \n", v.x(), v.y(), v.z());
 
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 	if(car_transform.at(0)) {
 		for(int i = 0; i < 2; i++) {
 			car_transform.at(i)->setAttitude(q[i]);
@@ -486,7 +607,7 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 			}
 		}
 	}
-#endif /*SIM_MICROMACHINE*/
+#endif /* CAR_SIMULATION == 1 */
 
 #ifdef USE_ARMM_SERVER_VIEW
 	if (!viewer.done()) {
@@ -503,13 +624,14 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 #endif
 }
 
-void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][4], osg::Vec3d wv[][4], CvMat *cParams, CvMat *cDistort, std::vector <osg::Quat> q_array,std::vector <osg::Vec3d>  v_array) {
+void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][4], osg::Vec3d wv[][4], CvMat *cParams, CvMat *cDistort, std::vector <osg::Quat> q_array,std::vector <osg::Vec3d>  v_array) 
+{
 	cvResize(newFrame, mGLImage);
 	cvCvtColor(mGLImage, mGLImage, CV_BGR2RGB);
 	mVideoImage->setImage(mGLImage->width, mGLImage->height, 0, 3, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)mGLImage->imageData, osg::Image::NO_DELETE);
 	//printf("1:%.2f  %.2f  %.2f \n", v.x(), v.y(), v.z());
 
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 	if(car_transform.at(0)) {
 		for(int i = 0; i < 2; i++) {
 			car_transform.at(i)->setAttitude(q[i]);
@@ -524,7 +646,7 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 		obj_transform_array.at(i)->setAttitude(q_array.at(i));
 		obj_transform_array.at(i)->setPosition(v_array.at(i));
 	}
-#endif /*SIM_MICROMACHINE*/
+#endif /* CAR_SIMULATION == 1 */
 
 #ifdef USE_ARMM_SERVER_VIEW
 	if (!viewer.done()) {

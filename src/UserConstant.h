@@ -1,8 +1,17 @@
 #ifndef USER_CONSTANT_H_
 #define USER_CONSTANT_H_
 
-const int NUMBER_CAR = 2;
-const int NUM_WHEEL = 4;
+#define SIM_MICROMACHINE 1
+#define CAR_SIMULATION 1
+
+#if CAR_SIMULATION==1
+	const int NUMBER_CAR = 2;
+	const int NUM_WHEEL = 4;
+#else
+	const int NUMBER_CAR = 0;
+	const int NUM_WHEEL = 0;
+#endif
+
 const int MAX_NUM_HANDS = 1;
 const float HAND_BOX_CM = 20.f; // 25 cm
 //const float HAND_BOX_CM = 40;
@@ -51,6 +60,10 @@ const int HAND_MAX_TRANSMIT_SIZE = 120;
 
 //for VRPN connection
 const int UDP_LIMITATION = 100;
+
+//for soft texture
+const short resX(12 ), resY( 9 );
+enum interaction{INIT, STROKE1, PINCH, KEEP, STROKE2, PASTE};
 
 //const float MIN_HAND_PIX = 15; // 11 pixels
 //const int HAND_GRID_SIZE = 225;// 15x15

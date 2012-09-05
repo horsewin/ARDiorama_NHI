@@ -1,9 +1,8 @@
 #ifndef KEYBOARD_CONTROLS_H
 #define KEYBOARD_CONTROLS_H
 
-#define SIM_MICROMACHINE 1
-
 #include "./Controls/Controls.h"
+#include "src\UserConstant.h"
 
 //OpenCV
 #include "opencv\cv.h"
@@ -11,7 +10,8 @@
 extern int collide_counter;
 extern double prev_collide_clock;
 
-class KeyboardController: public Controller {
+class KeyboardController: public Controller 
+{
 public:
 	KeyboardController(bt_ARMM_world *m_world):Controller(m_world) {};
 	int check_input() {
@@ -91,19 +91,22 @@ public:
 				return 77;
 			}
 			if (getKey(79)) { //o
-				int index = world->create_Box();
-				osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
+				string modelname = "Data/Cars/Torus.3ds";
+				int index = world->create_3dsmodel(modelname.c_str());
+				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
+				//int index = world->create_Box();
+				//osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				world->ChangeAttribute(10, index);
+				world->ChangeAttribute(20, index);
 
 				return 79;
 			}
 
 			if (getKey(80)) { //p
-				string modelname = "Data/Cars/Miku.3ds";
+				string modelname = "Data/Cars/rec2/BlueCow.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
-				cout << "Loading..." << endl;
+
 				Virtual_Objects_Count++;
 
 				//int index = world->create_Box();
@@ -114,15 +117,11 @@ public:
 				return 80;
 			}
 
-			if (getKey(78) || (collide_counter%3 == 0 && collide_counter != 0) ) { //N
-			//if (getKey(78) ) { //N
-				//int index = world->create_Sphere();
-				//osgAddObjectNode(osgNodeFromBtSphere(SPHERE_SIZE, world->get_Object_Transform(index)));
-				//Virtual_Objects_Count++;
-
-				//prev_collide_clock = static_cast<double>(cv::getTickCount());
-				//collide_counter++;
-				//return 78;
+			if (getKey(78) ) { //N
+				int index = world->create_Sphere();
+				osgAddObjectNode(osgNodeFromBtSphere(SPHERE_SIZE, world->get_Object_Transform(index)));
+				Virtual_Objects_Count++;
+				return 78;
 			}
 		}
 #endif /*SIM_MICROMACHINE*/
