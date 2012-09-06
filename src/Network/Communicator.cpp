@@ -61,13 +61,9 @@ ARMM_Communicator::~ARMM_Communicator()
 //Atsushi
 int ARMM_Communicator::register_types(void)
 {
-	//// to handle hand state changes
-	//hand_m_id = d_connection->register_message_type("vrpn_Tracker Hand");
-
 	// to handle hand state changes
 	hand_m_id = d_connection->register_message_type("vrpn_Tracker Hand");
-	//softtexture_m_id = hand_m_id;
-	//softtexture_m_id = d_connection->register_message_type("vrpn_Tracker Hand SoftTexture");
+	softtexture_m_id = d_connection->register_message_type("vrpn_Tracker SoftTexture");
 
 	return 0;
 }
@@ -115,6 +111,12 @@ int	ARMM_Communicator::encode_softtexture_to(char *buf, int division)
 
 void ARMM_Communicator::mainloop() 
 {
+	//is there any key input?
+	if(input_key!=0)
+	{
+		mDataType = REGULAR;
+	}
+
 	if( mDataType == REGULAR)
 	{
 		//----->Set the number of sending data

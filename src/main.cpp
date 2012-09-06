@@ -378,7 +378,6 @@ int main(int argc, char* argv[])
 		}
 #endif
 		xc->check_input();
-
 		if(kinectTransform) { // kinect transform as cvmat* for use
 			if( counter >= SIM_FREQUENCY) {
 #ifdef UPDATE_TRIMESH
