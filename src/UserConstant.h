@@ -4,6 +4,8 @@
 #define SIM_MICROMACHINE 1
 #define CAR_SIMULATION 1
 
+#define REP(i,n) for(int i=0;i<(int)n;++i)
+
 #if CAR_SIMULATION==1
 	const int NUMBER_CAR = 2;
 	const int NUM_WHEEL = 4;
@@ -63,7 +65,7 @@ const int UDP_LIMITATION = 100;
 
 //for soft texture
 const short resX(12 ), resY( 9 );
-enum interaction{INIT, STROKE1, PINCH, KEEP, STROKE2, PASTE};
+enum interaction{INIT, STROKE1, PINCH, TEXTUREGET, KEEP, STROKE2, PASTE};
 
 //const float MIN_HAND_PIX = 15; // 11 pixels
 //const int HAND_GRID_SIZE = 225;// 15x15

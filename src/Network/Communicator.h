@@ -29,6 +29,9 @@
 #include "../UserConstant.h"
 
 #include "../Physics/bt_ARMM_hand.h"
+
+enum datatype{REGULAR, SOFTBODY};
+
 //---------------------------------------------------------------------------
 // Struct
 //---------------------------------------------------------------------------
@@ -64,10 +67,10 @@ public:
 protected:
 	virtual int register_types( void );
 	virtual int encode_hand_to(char *buf, int division);
-	//virtual int encode_softtexture_to(char *buf, int division);
+	virtual int encode_softtexture_to(char *buf, int division);
 
 	inline void ObjectMessagePacking( void );
-	//inline void SoftTextureMessagePacking( void );
+	inline void SoftTextureMessagePacking( void );
 	inline void HandMessagePacking( void );
 
 protected:
@@ -83,6 +86,9 @@ protected:
 		std::vector<bt_ARMM_hand*>* m_hands_body;
 
 		//	float* HeightfieldData;
+
+private:
+	datatype mDataType;
 };
 
 #endif

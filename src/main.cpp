@@ -57,7 +57,6 @@ extern int collide[2];
 extern btVector3 pCollision;
 extern int collisionInd;
 extern interaction interact_state;
-extern bool touch;
 
 using namespace std; 
 using namespace xn;
@@ -501,12 +500,14 @@ void RenderScene(IplImage *arImage, Capture *capture)
 			objVectorDeletable.clear();
 		}
 
-		if( interact_state == PINCH && touch)
+		if( interact_state == TEXTUREGET)
 		{
 			interact_state = KEEP;
+			cout << "Interaction state changed TEXTUREGET to KEEP" << endl;
 
 			//add soft texture object into the environment
-			kc->check_input(66); //B
+			osgAddObjectNode(m_world->CreateSoftTexture("Data/tex.bmp"));
+			cout << "create the soft body object" << endl;
 		}
 		//if( collide[0] >= 1 && collide[1] >= 1)
 		//{

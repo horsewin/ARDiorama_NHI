@@ -8,9 +8,6 @@
 
 #include "Communicator.h"
 
-
-#define REP(i,n) for(int i=0;i<(int)n;++i)
-
 //---------------------------------------------------------------------------
 // Global
 //---------------------------------------------------------------------------
@@ -53,6 +50,8 @@ vrpn_Tracker( "ARMM_Comm", c )
 		REP(j,3){
 		}
 	}
+
+	mDataType = REGULAR;
 }
 
 ARMM_Communicator::~ARMM_Communicator()
@@ -94,156 +93,170 @@ int	ARMM_Communicator::encode_hand_to(char *buf, int division)
 }
 
 //Atsushi
-//int	ARMM_Communicator::encode_softtexture_to(char *buf, int division)
-//{
-//	char *bufptr = buf;
-//	int  buflen =  1000;
-//
-//	// Message includes: long sensor, long scrap, vrpn_float64 pos[3], vrpn_float64 quat[4]
-//	// Byte order of each needs to be reversed to match network standard
-//
-//	//packing collision, key input and virtual objects info
-//	vrpn_buffer(&bufptr, &buflen, d_sensor);
-//	
-//	//packing soft texture info
-//	REP(i, resX*resY) REP(j,3)
-//	{
-//		vrpn_buffer(&bufptr, &buflen, softT[i][j]);
-//	}
-//
-//	return HANDS_BUFFER - buflen;
-//}
+int	ARMM_Communicator::encode_softtexture_to(char *buf, int division)
+{
+	char *bufptr = buf;
+	int  buflen =  HANDS_BUFFER;
+
+	// Message includes: long sensor, long scrap, vrpn_float64 pos[3], vrpn_float64 quat[4]
+	// Byte order of each needs to be reversed to match network standard
+
+	//packing collision, key input and virtual objects info
+	vrpn_buffer(&bufptr, &buflen, d_sensor);
+	
+	//packing soft texture info
+	REP(i, resX*resY) REP(j,3)
+	{
+		vrpn_buffer(&bufptr, &buflen, softT[i][j]);
+	}
+
+	return HANDS_BUFFER - buflen;
+}
 
 void ARMM_Communicator::mainloop() 
 {
-	//----->Set the number of sending data
-	const int CAR_PARAM       = NUMBER_CAR*NUM_WHEEL+NUMBER_CAR;
-	const int COLLISION_PARAM = CAR_PARAM + 1;  
-	const int object_num = static_cast<vrpn_int32>( (*m_objects_body).size() ); 
-	int hands_num  = (*m_hands_body).size();
-	std::vector<float *> hand_x;
-	std::vector<float *> hand_y;
-	std::vector<float *> hand_z;
-
-	num_sensors = COLLISION_PARAM;
-	if(  hands_num > 0){
-		REP(i,hands_num){
-			hand_x.push_back((*m_hands_body)[i]->debugHandX());
-			hand_y.push_back((*m_hands_body)[i]->debugHandY());
-			hand_z.push_back((*m_hands_body)[i]->debugHandZ());
-		}
-	}
-
-	// Update the number of sensors -> 
-	if(object_num > 0 ){
-		num_sensors += object_num;
-	}
-
-	//----->Send cars info first
-	REP(i,num_sensors+1)
+	if( mDataType == REGULAR)
 	{
-		vrpn_gettimeofday(&_timestamp, NULL);
-		vrpn_Tracker::timestamp = _timestamp;
-		d_sensor = i;
-		if( i < CAR_PARAM){
-#if CAR_SIMULATION == 1
-			// pos and orientation of cars
-			if(i % 5 == 0)
+		//----->Set the number of sending data
+		const int CAR_PARAM       = NUMBER_CAR*NUM_WHEEL+NUMBER_CAR;
+		const int COLLISION_PARAM = CAR_PARAM + 1;  
+		const int object_num = static_cast<vrpn_int32>( (*m_objects_body).size() ); 
+		int hands_num  = (*m_hands_body).size();
+		std::vector<float *> hand_x;
+		std::vector<float *> hand_y;
+		std::vector<float *> hand_z;
+
+		num_sensors = COLLISION_PARAM;
+		if(  hands_num > 0)
+		{
+			REP(i,hands_num)
 			{
-				int j = (int) i / 5;
-				pos[0] = (vrpn_float64) CarsPosition[j].x(); 
-				pos[1] = (vrpn_float64) CarsPosition[j].y(); 
-				pos[2] = (vrpn_float64) CarsPosition[j].z(); 
-				d_quat[0] = (vrpn_float64) CarsOrientation[j].x();
-				d_quat[1] = (vrpn_float64) CarsOrientation[j].y();
-				d_quat[2] = (vrpn_float64) CarsOrientation[j].z();
-				d_quat[3] = (vrpn_float64) CarsOrientation[j].w();
-			} 
-			//pos and orientation of car's wheels
-			else 
-			{ 
-				int j = (int) floor((float) i/5);
-				int k = (i % 5) -1;
-				pos[0] = (vrpn_float64) WheelsPosition[j][k].x(); 
-				pos[1] = (vrpn_float64) WheelsPosition[j][k].y(); 
-				pos[2] = (vrpn_float64) WheelsPosition[j][k].z();
-				d_quat[0] = (vrpn_float64) WheelsOrientaion[j][k].x();
-				d_quat[1] = (vrpn_float64) WheelsOrientaion[j][k].y();
-				d_quat[2] = (vrpn_float64) WheelsOrientaion[j][k].z();
-				d_quat[3] = (vrpn_float64) WheelsOrientaion[j][k].w();
+				hand_x.push_back((*m_hands_body)[i]->debugHandX());
+				hand_y.push_back((*m_hands_body)[i]->debugHandY());
+				hand_z.push_back((*m_hands_body)[i]->debugHandZ());
 			}
+		}
+
+		// Update the number of sensors -> 
+		if(object_num > 0 ){
+			num_sensors += object_num;
+		}
+
+		//----->Send cars info first
+		REP(i,num_sensors+1)
+		{
+			vrpn_gettimeofday(&_timestamp, NULL);
+			vrpn_Tracker::timestamp = _timestamp;
+			d_sensor = i;
+			if( i < CAR_PARAM)
+			{
+#if CAR_SIMULATION == 1
+				// pos and orientation of cars
+				if(i % 5 == 0)
+				{
+					int j = (int) i / 5;
+					pos[0] = (vrpn_float64) CarsPosition[j].x(); 
+					pos[1] = (vrpn_float64) CarsPosition[j].y(); 
+					pos[2] = (vrpn_float64) CarsPosition[j].z(); 
+					d_quat[0] = (vrpn_float64) CarsOrientation[j].x();
+					d_quat[1] = (vrpn_float64) CarsOrientation[j].y();
+					d_quat[2] = (vrpn_float64) CarsOrientation[j].z();
+					d_quat[3] = (vrpn_float64) CarsOrientation[j].w();
+				} 
+				//pos and orientation of car's wheels
+				else 
+				{ 
+					int j = (int) floor((float) i/5);
+					int k = (i % 5) -1;
+					pos[0] = (vrpn_float64) WheelsPosition[j][k].x(); 
+					pos[1] = (vrpn_float64) WheelsPosition[j][k].y(); 
+					pos[2] = (vrpn_float64) WheelsPosition[j][k].z();
+					d_quat[0] = (vrpn_float64) WheelsOrientaion[j][k].x();
+					d_quat[1] = (vrpn_float64) WheelsOrientaion[j][k].y();
+					d_quat[2] = (vrpn_float64) WheelsOrientaion[j][k].z();
+					d_quat[3] = (vrpn_float64) WheelsOrientaion[j][k].w();
+				}
 #endif /* CAR_SIMULATION == 1 */
-		}		
-		//----->Keyboard input checker
-		else if( i == CAR_PARAM)
-		{
-			pos[0] = (vrpn_float64)input_key;
-		}
-		//----->Send collisioninfo
-	    else if( i > CAR_PARAM && i <= COLLISION_PARAM)
-		{
-			pos[0] = (vrpn_float64)(pColLocalOnObj.getX());
-			pos[1] = (vrpn_float64)(pColLocalOnObj.getY());
-			pos[2] = (vrpn_float64)(pColLocalOnObj.getZ());
-			d_quat[0] = ((interact_state==STROKE1) || (interact_state==STROKE2))? (vrpn_float64)1.0 : (vrpn_float64)0.0;
-			d_quat[1] = touch?  (vrpn_float64)1.0 : (vrpn_float64)0.0;
-			d_quat[2] = (vrpn_float64)collisionInd;
-		}
-		//----->Send objects info
-		else
-		{
-			int index = i - (COLLISION_PARAM+1);
-			btVector3 trans = (*m_objects_body)[index]->getCenterOfMassTransform().getOrigin();
-			btQuaternion quats = (*m_objects_body)[index]->getCenterOfMassTransform().getRotation();
-			float bullet_scale_correction = 1;
-			pos[0] = static_cast<vrpn_float64>(trans.x()) * bullet_scale_correction;
-			pos[1] = static_cast<vrpn_float64>(trans.y()) * bullet_scale_correction;
-			pos[2] = static_cast<vrpn_float64>(trans.z()) * bullet_scale_correction;
-			d_quat[0] = static_cast<vrpn_float64>(quats.getX()) * bullet_scale_correction;
-			d_quat[1] = static_cast<vrpn_float64>(quats.getY()) * bullet_scale_correction;
-			d_quat[2] = static_cast<vrpn_float64>(quats.getZ()) * bullet_scale_correction;
-			d_quat[3] = static_cast<vrpn_float64>(quats.getW()) * bullet_scale_correction;
-		}
-		ObjectMessagePacking();
-	}
-
-	//----->Send hands info
-	if( hands_num > 0){
-		d_sensor = 0;
-		int hand_pixel = 0;
-		REP(index,HAND_SIZE){
-			if( hand_z[0][index] < 100 && hand_pixel < UDP_LIMITATION){
-				//d_sensor = index;
-				hand[hand_pixel][0] = static_cast<vrpn_float32>(hand_x[0][index]); 
-				hand[hand_pixel][1] = static_cast<vrpn_float32>(hand_y[0][index]); 
-				hand[hand_pixel][2] = static_cast<vrpn_float32>(hand_z[0][index]);
-				hand_pixel++;
+			}		
+			//----->Keyboard input checker
+			else if( i == CAR_PARAM)
+			{
+				pos[0] = (vrpn_float64)input_key;
 			}
-			if( hand_pixel >= UDP_LIMITATION) break;
-		}	
-		d_sensor = hand_pixel;
+			//----->Send collisioninfo
+			else if( i > CAR_PARAM && i <= COLLISION_PARAM)
+			{
+				pos[0] = (vrpn_float64)(pColLocalOnObj.getX());
+				pos[1] = (vrpn_float64)(pColLocalOnObj.getY());
+				pos[2] = (vrpn_float64)(pColLocalOnObj.getZ());
+				d_quat[0] = ((interact_state==STROKE1) || (interact_state==STROKE2))? (vrpn_float64)1.0 : (vrpn_float64)0.0;
+				d_quat[1] = touch?  (vrpn_float64)1.0 : (vrpn_float64)0.0;
+				d_quat[2] = (vrpn_float64)collisionInd;
+			}
+			//----->Send objects info
+			else
+			{
+				int index = i - (COLLISION_PARAM+1);
+				btVector3 trans = (*m_objects_body)[index]->getCenterOfMassTransform().getOrigin();
+				btQuaternion quats = (*m_objects_body)[index]->getCenterOfMassTransform().getRotation();
+				float bullet_scale_correction = 1;
+				pos[0] = static_cast<vrpn_float64>(trans.x()) * bullet_scale_correction;
+				pos[1] = static_cast<vrpn_float64>(trans.y()) * bullet_scale_correction;
+				pos[2] = static_cast<vrpn_float64>(trans.z()) * bullet_scale_correction;
+				d_quat[0] = static_cast<vrpn_float64>(quats.getX()) * bullet_scale_correction;
+				d_quat[1] = static_cast<vrpn_float64>(quats.getY()) * bullet_scale_correction;
+				d_quat[2] = static_cast<vrpn_float64>(quats.getZ()) * bullet_scale_correction;
+				d_quat[3] = static_cast<vrpn_float64>(quats.getW()) * bullet_scale_correction;
+			}
+			ObjectMessagePacking();
+		}
 
-		HandMessagePacking();
+		//----->Send hands info
+		if( hands_num > 0)
+		{
+			d_sensor = 0;
+			int hand_pixel = 0;
+			REP(index,HAND_SIZE)
+			{
+				if( hand_z[0][index] < 100 && hand_pixel < UDP_LIMITATION)
+				{
+					//d_sensor = index;
+					hand[hand_pixel][0] = static_cast<vrpn_float32>(hand_x[0][index]); 
+					hand[hand_pixel][1] = static_cast<vrpn_float32>(hand_y[0][index]); 
+					hand[hand_pixel][2] = static_cast<vrpn_float32>(hand_z[0][index]);
+					hand_pixel++;
+				}
+				if( hand_pixel >= UDP_LIMITATION) break;
+			}	
+			d_sensor = hand_pixel;
+
+			HandMessagePacking();
+		}
+		
+		mDataType = SOFTBODY;
 	}
 
-	//----->Send soft texture info
-	//if( interact_state == KEEP )
-	//{
-	//	printf("SoftTexture\n");
-	//	d_sensor = 0;
-	//	REP(index,resX*resY)
-	//	{
-	//		d_sensor = index;
-	//		softT[index][0] = static_cast<vrpn_float32>(softTexture_array[index].x()); 
-	//		softT[index][1] = static_cast<vrpn_float32>(softTexture_array[index].y()); 
-	//		softT[index][2] = static_cast<vrpn_float32>(softTexture_array[index].z()); 
-	//	}	
+	else if( mDataType == SOFTBODY)
+	{
+		//----->Send soft texture info
+		if( interact_state == KEEP )
+		{
+			d_sensor = 0;
+			REP(index,resX*resY)
+			{
+				d_sensor = index;
+				softT[index][0] = static_cast<vrpn_float32>(softTexture_array[index].x()); 
+				softT[index][1] = static_cast<vrpn_float32>(softTexture_array[index].y()); 
+				softT[index][2] = static_cast<vrpn_float32>(softTexture_array[index].z()); 
+			}	
+			SoftTextureMessagePacking();
+		}
+		mDataType = REGULAR;
+	}
 
-	//	SoftTextureMessagePacking();
-	//}
 
 	//Update server main loop
-  server_mainloop();
+	server_mainloop();
 
 }
 
@@ -256,14 +269,14 @@ void ARMM_Communicator::ObjectMessagePacking( void )
 	}
 }
 
-//void ARMM_Communicator::SoftTextureMessagePacking( void )
-//{
-//	char msgbuf[1000];
-//	int  len = encode_softtexture_to(msgbuf, 1);
-//	if (d_connection->pack_message(len, _timestamp, softtexture_m_id, d_sender_id, msgbuf, vrpn_CONNECTION_LOW_LATENCY)) {
-//		fprintf(stderr,"can't write message(Soft texture handler): tossing\n");
-//	}
-//}
+void ARMM_Communicator::SoftTextureMessagePacking( void )
+{
+	char msgbuf[HANDS_BUFFER];
+	int  len = encode_softtexture_to(msgbuf, 1);
+	if (d_connection->pack_message(len, _timestamp, softtexture_m_id, d_sender_id, msgbuf, vrpn_CONNECTION_LOW_LATENCY)) {
+		fprintf(stderr,"can't write message(Soft texture handler): tossing\n");
+	}
+}
 
 void ARMM_Communicator::HandMessagePacking( void )
 {

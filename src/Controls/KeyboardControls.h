@@ -1,7 +1,7 @@
 #ifndef KEYBOARD_CONTROLS_H
 #define KEYBOARD_CONTROLS_H
 
-#include "./Controls/Controls.h"
+#include "./Controls.h"
 #include "src\UserConstant.h"
 
 //OpenCV
@@ -14,9 +14,23 @@ class KeyboardController: public Controller
 {
 public:
 	KeyboardController(bt_ARMM_world *m_world):Controller(m_world) {};
+	void PressB()
+	{
+		// Add box shape objects
+		osgAddObjectNode(world->CreateSoftTexture("Data/tex.bmp"));
+		cout << "create the soft body object" << endl;
+	}
+
+	void PressN()
+	{
+		int index = world->create_Sphere();
+		osgAddObjectNode(osgNodeFromBtSphere(SPHERE_SIZE, world->get_Object_Transform(index)));
+		Virtual_Objects_Count++;
+	}
+
 	int check_input() {
 
-#ifdef SIM_MICROMACHINE
+#if CAR_SIMULATION == 1
 		//Car Number 1
 		if (getKey(VK_UP)) {
 			world->accelerateEngine(0);
@@ -48,7 +62,7 @@ public:
 		} else {
 			 world->turnReset(1);
 		}
-#endif /*SIM_MICROMACHINE*/
+#endif /* CAR_SIMULATION == 1 */
 
 		//A 65 S 83 D 68 W 87 F 70 V 86
 		if (getKey(VK_ESCAPE)) running = false;
@@ -78,12 +92,7 @@ public:
 #ifdef SIM_MICROMACHINE
 		if(Virtual_Objects_Count < MAX_NUM_VIR_OBJ) {
 			if (getKey(66)) { //B
-				// Add box shape objects
-				//int index = world->create_Box();
-				//osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
-				osgAddObjectNode(world->CreateSoftTexture(""));
-				cout << "create the soft body object" << endl;
-				//Virtual_Objects_Count++;
+				PressB();
 				return 66;
 			}
 			if (getKey(77)) { //M
@@ -118,9 +127,7 @@ public:
 			}
 
 			if (getKey(78) ) { //N
-				int index = world->create_Sphere();
-				osgAddObjectNode(osgNodeFromBtSphere(SPHERE_SIZE, world->get_Object_Transform(index)));
-				Virtual_Objects_Count++;
+				PressN();
 				return 78;
 			}
 		}
@@ -153,15 +160,6 @@ public:
 		}
 		return 0;
 	}
-
-	void check_input(int pass) {
-			//if (pass == 78) { //N
-			//	int index = world->create_Triangular_Ramp();
-			//	osgAddObjectNode(osgNodeFromSimpleTriangularRampShape(world->get_Object_Transform(index)));
-			//	Virtual_Objects_Count++;
-			//}
-		}
-
 private:
 	inline bool getKey(int key) { return GetAsyncKeyState(key)& 0x8000; }
 };

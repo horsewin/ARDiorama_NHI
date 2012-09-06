@@ -143,7 +143,7 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 		touch = true;
 		// collision frequency is set to at least 3.0 sec upward
 		//if(true){
-		if( time_spent > 1.0)
+		if( time_spent > 0.3)
 		{
 
 			switch(interact_state)
@@ -151,10 +151,7 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 				case INIT:
 					interact_state = STROKE1;
 					break;
-					
-				case KEEP:
-					interact_state = PASTE;
-					break;
+
 			}
 			//rewrite previous collision time
 			prev_collide_clock = current_clock;
@@ -238,9 +235,9 @@ struct MeshUpdater : public osg::Drawable::UpdateCallback
 
 		for( idx=0; idx<_size; idx++)
         {
-		/*	softTexture_array[idx] = osgbCollision::asOsgVec3( nodes[ idx ].m_x );
-        */    *it++ = softTexture_array[idx];
-			*it++ = osg::Vec3d(nodes[ idx ].m_x.getX(), nodes[ idx ].m_x.getY(), nodes[ idx ].m_x.getZ());
+			softTexture_array[idx] = osgbCollision::asOsgVec3( nodes[ idx ].m_x );
+            *it++ = softTexture_array[idx];
+			//*it++ = osg::Vec3d(nodes[ idx ].m_x.getX(), nodes[ idx ].m_x.getY(), nodes[ idx ].m_x.getZ());
         }
 		verts->dirty();
         draw->dirtyBound();
@@ -1155,27 +1152,10 @@ void bt_ARMM_world::DecideCollisionCondition()
 	//set touch value to false if no collision continues for 2 sec
 	double current_clock = static_cast<double>(cv::getTickCount());
 	double time_spent = ( current_clock - prev_collide_clock ) / cv::getTickFrequency();
-	if(time_spent > 1.5)
+	if(time_spent > 1.0)
 	{
 		touch = false;
 	}
-
-
-	if( collisionInd > 0 && interact_state==STROKE1 && !touch)
-	{
-		//[Collide some object]->[release it]
-		// it make system unable to stroke
-		cout << "Interaction state changed STROKE to PINCH" << endl;
-		interact_state = PINCH;
-	}
-
-	if( interact_state==PASTE && !touch)
-	{
-		//[Collide some object]->[release it]
-		// it make system unable to stroke
-		cout << "Interaction state changed STROKE to PINCH" << endl;
-		interact_state = PINCH;
-	}	
 
 	for(int i=0; i<collisionSize; i++)
 	{
@@ -1195,25 +1175,28 @@ void bt_ARMM_world::DecideCollisionCondition()
 					<< pCollision << ","
 					<< endl;  
 			}
-			else
+			else if(interact_state == PINCH)
 			{
-
 				//2回目の接触 <sourceオブジェクト決定>
-				if( i == collisionInd && interact_state == PINCH )
+				if( i == collisionInd)
 				{
 					cout << " Collision to " << collisionInd << " with parts" <<  " in " 
 					<< pCollision << ","
 					<< endl;
-
-					interact_state = KEEP;
+					cout << "Interaction state changed PINCH to TEXTUREGET " << endl;
+					interact_state = TEXTUREGET;
 				}
+			}
+			else if( interact_state == KEEP)
+			{
 				//3回目の接触 <destinationオブジェクト決定>
-				else
+				if( i != collisionInd)
 				{
 					cout << " Collision to " << i << " and finished transfer from " << collisionInd <<  " in " 
 					<< pCollision << ","
 					<< endl;
 
+					cout << "Interaction state changed KEEP to PASTE" << endl;
 					interact_state = PASTE;
 				}
 			}
@@ -1234,6 +1217,23 @@ void bt_ARMM_world::DecideCollisionCondition()
 			return;
 		}
 	}
+
+
+	if( collisionInd > 0 && interact_state==STROKE1 && !touch)
+	{
+		//[Collide some object]->[release it]
+		// it make system unable to stroke
+		cout << "Interaction state changed STROKE to PINCH" << endl;
+		interact_state = PINCH;
+	}
+
+	if( interact_state==PASTE && !touch)
+	{
+		//[Collide some object]->[release it]
+		// it make system unable to stroke
+		cout << "Interaction state changed PASTE to INIT" << endl;
+		interact_state = INIT;
+	}	
 
 	changeCollisionObject = false;
 }
