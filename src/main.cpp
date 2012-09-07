@@ -998,8 +998,8 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 					continue;
 				}
 
-				if( abs(fingerTips[i][j].x-tmpFingertips.x) <= 2
-				&&  abs(fingerTips[i][j].y-tmpFingertips.y) <= 2)
+				if( abs(fingerTips[i][j].x-tmpFingertips.x) <= 1
+				&&  abs(fingerTips[i][j].y-tmpFingertips.y) <= 1)
 				{
 					//OSG‚ÅŠÖ˜A•t‚¯‚Ä‚¢‚éIndex‚Ì‘–¸•ûŒü‚É‚æ‚Á‚ÄIndex‚Í’è‚Ü‚é
 					fingerIndex.push_back( dx*MIN_HAND_PIX + (MIN_HAND_PIX-1)-dy);

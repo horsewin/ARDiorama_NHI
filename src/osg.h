@@ -764,28 +764,12 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 		{
 			int curr = i*MIN_HAND_PIX+j;
 			//osg::Vec3d pos = hand_object_transform_array[index].at(curr)->getPosition();
-			if(grid[curr] > 0 && grid[curr]<1000 )
+			if(grid[curr] > 0 && grid[curr]<100 )
 			{
 				hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(x[curr]*SPHERE_SCALE, y[curr]*SPHERE_SCALE, grid[curr]*DEPTH_SCALE));
 
 				//printf("Pos, sensor %d = %f, %f, %f\n", curr, x[curr], y[curr], grid[curr]);
-				bool fitting=false;
-				REP(fingerTips,fingerIndex.size())
-				{
-					if( fingerIndex.at(fingerTips) == curr)
-					{
-						hand_object_shape_array[curr]->setColor(osg::Vec4(1, 0, 0, 1));
-						//fingerIndex.pop_back();
-						fitting=true;
-						cout << curr << endl;
-						break;
-					}
-				}
-
-				if(!fitting)
-				{
-					hand_object_shape_array[curr]->setColor(osg::Vec4(0.9451, 0.7333, 0.5765, 1));
-				}
+				hand_object_shape_array[curr]->setColor(osg::Vec4(0.9451, 0.7333, 0.5765, 1));
 			}
 			else
 			{
@@ -799,6 +783,37 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 			//	printf("Pos, sensor %d = %f, %f, %f\n", curr, x[curr], y[curr], grid[curr]);
 			}
 		}
+	}
+
+	//assign fingertips
+	REP(fingerTips,fingerIndex.size())
+	{
+		int idx =	fingerIndex.at(fingerTips);
+
+		if(grid[idx] > 0 && grid[idx]<100){}
+		else
+		{
+			bool fitting = false;
+			int shift = 1;
+			do{
+				for(int i=-shift; i<=shift; i++)
+				{
+					for(int j=-shift; j<=shift; j++)
+					{
+						int tmpIdx = idx + (i*MIN_HAND_PIX+j);
+						if(tmpIdx < 0 || tmpIdx >= HAND_GRID_SIZE) continue;
+						if(grid[tmpIdx] > 0 && grid[tmpIdx]<100)
+						{
+							idx = tmpIdx;
+							fitting = true;
+						}
+					}
+					if(fitting) break;
+				}
+				shift++;
+			}while(!fitting || shift<=2);
+		}
+		hand_object_shape_array[idx]->setColor(osg::Vec4(1, 0, 0, 1));
 	}
 }
 
