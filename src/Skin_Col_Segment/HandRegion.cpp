@@ -211,56 +211,5 @@ IplImage * HandRegion::GetHandRegion( IplImage * srcImage, int *cont_num, std::v
 	// find connected components
 	getConnectedComponents(_pImage,1,4,cont_num,cont_boundbox, cont_boundbox2D,cont_center);//int *num, CvRect *bbs, CvPoint *centers
 
-	//IplImage *temp = (IplImage*) cvClone(_pImage);
-	//cv::Mat handMask = temp;
-
-	//vector< vector<cv::Point> > fingerTips;
-	//vector< vector<cv::Point> > contours;
-
-	//fingerTips.clear();
-	//contours.clear();
-	//cv::findContours(handMask, contours, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
-	//for (unsigned int i=0; i<contours.size(); i++){
-	//	vector<cv::Point> contour = contours[i];
-	//	cv::Mat contourMat = cv::Mat(contour);
-	//	double area = cv::contourArea(contourMat);
-
-	//	if (area > 200)  { // possible hand
-	//		vector<cv::Point> tmp_fingertips;
-	//		tmp_fingertips.clear();
-
-	//		cv::Scalar center = mean(contourMat);
-	//		cv::Point centerPoint = cv::Point(static_cast<int>(center.val[0]), static_cast<int>(center.val[1]) );
-	//		vector<cv::Point> approxCurve;
-	//		cv::approxPolyDP(contourMat, approxCurve, 15, true);
-
-	//		vector<int> hull;
-	//		cv::convexHull(cv::Mat(approxCurve), hull);
-
-	//		// find upper and lower bounds of the hand and define cutoff threshold (don't consider lower vertices as fingers)
-	//		int upper = 640, lower = 0;
-	//		for (unsigned int j=0; j<hull.size(); j++) {
-	//			int idx = hull[j]; // corner index
-	//			if (approxCurve[idx].y < upper) upper = approxCurve[idx].y;
-	//			if (approxCurve[idx].y > lower) lower = approxCurve[idx].y;
-	//		}
-
-	//		float cutoff = lower - (lower - upper) * 0.1f;
-	//		// find interior angles of hull corners
-	//		for (unsigned int j=0; j<hull.size(); j++) {
-	//			int idx = hull[j]; // corner index
-	//			int pdx = idx == 0 ? approxCurve.size() - 1 : idx - 1; //  predecessor of idx
-	//			int sdx = idx == approxCurve.size() - 1 ? 0 : idx + 1; // successor of idx
-	//			cv::Point v1 = approxCurve[sdx] - approxCurve[idx];
-	//			cv::Point v2 = approxCurve[pdx] - approxCurve[idx];
-	//			double angle = acos( (v1.x*v2.x + v1.y*v2.y) / (cv::norm(v1) * cv::norm(v2)) );
-	//			// low interior angle + within upper 90% of region -> we got a finger
-	//			if ( angle < 1 && approxCurve[idx].y < cutoff) {
-	//				tmp_fingertips.push_back(cv::Point( approxCurve[idx].x , approxCurve[idx].y) );
-	//			}
-	//		}
-	//		fingerTips.push_back(tmp_fingertips);
-	//	}
-	//}
-  return _pImage;
+	return _pImage;
 }

@@ -203,6 +203,8 @@ public:
 
 	std::vector<osg::PositionAttitudeTransform*> hand_object_global_array;
 	std::vector<osg::PositionAttitudeTransform*> hand_object_transform_array[MAX_NUM_HANDS];
+	std::vector<osg::ShapeDrawable*> hand_object_shape_array;
+
 #ifdef SIM_PARTICLES
 	std::vector<osg::PositionAttitudeTransform*> world_sphere_transform_array;
 #endif
@@ -717,10 +719,11 @@ void osg_createHand(int index, float x, float y, float world_scale, float ratio)
 		for(int j = 0; j < MIN_HAND_PIX; j++) {
 			//create a part of hands 
 			osg::ref_ptr< osg::Sphere > sphere = new osg::Sphere(osg::Vec3d(0,0,0), sphere_size);
-      osg::ref_ptr< osg::ShapeDrawable> shape = new osg::ShapeDrawable( sphere.get() );
+			osg::ref_ptr< osg::ShapeDrawable> shape = new osg::ShapeDrawable( sphere.get() );
 			shape->getOrCreateStateSet()->setMode(GL_BLEND, osg::StateAttribute::ON);
 			shape->setColor(osg::Vec4(1, 1, 0, 0.2));
 			osg::ref_ptr< osg::Geode> geode = new osg::Geode();
+			hand_object_shape_array.push_back(shape.get());
 			geode->addDrawable( shape.get() );
 
 			hand_object_transform_array[index].push_back(new osg::PositionAttitudeTransform());
@@ -747,24 +750,22 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 	const int DEPTH_SCALE = 10; // to convert cm to mm scale
 	//	hand_object_global_array.at(index)->setPosition(osg::Vec3d(x*SPHERE_SCALE, y*SPHERE_SCALE, 0));
 	hand_object_global_array.at(index)->setPosition(osg::Vec3d(0, 0, 0));
-	for(int i = 0; i < MIN_HAND_PIX; i++) {
-		for(int j = 0; j < MIN_HAND_PIX; j++) {
+
+	for(int i = 0; i < MIN_HAND_PIX; i++) 
+	{
+		for(int j = 0; j < MIN_HAND_PIX; j++) 
+		{
 			int curr = i*MIN_HAND_PIX+j;
 			//osg::Vec3d pos = hand_object_transform_array[index].at(curr)->getPosition();
-			if(grid[curr] > 0)
+			if(grid[curr] > 0){
 				hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(x[curr]*SPHERE_SCALE, y[curr]*SPHERE_SCALE, grid[curr]*DEPTH_SCALE));
-				//hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(x[curr]*SPHERE_SCALE, y[curr]*SPHERE_SCALE, grid[curr]*SPHERE_SCALE));
+				//osg::Geode * geo = hand_object_transform_array[index].at(curr)->asGeode();
+				//osg::ShapeDrawable * shape = dynamic_cast<osg::ShapeDrawable*>(geo->getDrawable(0));
 				//hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(pos.x(), pos.y(), grid[curr]*SPHERE_SCALE));
-			else
+			}else{
 				hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(x[curr]*SPHERE_SCALE, y[curr]*SPHERE_SCALE, 5000*DEPTH_SCALE));
 				//hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(pos.x(), pos.y(), 100*SPHERE_SCALE));
-//				if(voxel[index] < 0)
-//					world_sphere_transform_array.at(index)->setStateSet(
-//				else
-//					s->setAllChildrenOn();
-			//if(curr%10 == 0)
-			//	printf("Pos, sensor %d = %f, %f, %f\n", curr, x[curr], y[curr], grid[curr]);
-
+			}
 		}
 	}
 
