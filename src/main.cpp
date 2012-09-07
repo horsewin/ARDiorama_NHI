@@ -998,14 +998,14 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 					continue;
 				}
 
-				if( abs(fingerTips[i][j].x-tmpFingertips.x) <= 1
-				&&  abs(fingerTips[i][j].y-tmpFingertips.y) <= 1)
+				if( abs(fingerTips[i][j].x-tmpFingertips.x) <= 2
+				&&  abs(fingerTips[i][j].y-tmpFingertips.y) <= 2)
 				{
 					//OSG‚ÅŠÖ˜A•t‚¯‚Ä‚¢‚éIndex‚Ì‘–¸•ûŒü‚É‚æ‚Á‚ÄIndex‚Í’è‚Ü‚é
 					fingerIndex.push_back( dx*MIN_HAND_PIX + (MIN_HAND_PIX-1)-dy);
 				}
 			}
-			cvCircle(transColor320, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
+			cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
 		}
 	}
 	//printf("Upper=(%d,%d) Bottom=(%d,%d)\n",upperLeft.x, upperLeft.y, bottomRight.x, bottomRight.y);
@@ -1013,7 +1013,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	//cout << "Finger=" << fingerIndex.size() << endl;
 #ifdef SHOWSEGMENTATION
 	//cvShowImage("Bin", grey_640);
-	//cvShowImage("Op_Flow_640",col_640);
+	cvShowImage("Op_Flow_640",col_640);
 	cvShowImage("transcolor",transColor320);
 #endif
 
