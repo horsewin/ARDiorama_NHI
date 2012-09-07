@@ -873,11 +873,13 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	float skin_ratio = SKIN_SEGM_SIZE.width / MESH_SIZE.width;
 	assert( fabs( (SKIN_SEGM_SIZE.height / MESH_SIZE.height) - skin_ratio ) < 0.1); 
 
+	CvPoint upperLeft = cvPoint(0,0);
+	CvPoint bottomRight = cvPoint(0,0);
 	REP(i,num_hand_in_scene)
 	{
 		center_depth[i] = CV_IMAGE_ELEM(transDepth320, float, cont_center.at(i).y, cont_center.at(i).x);
-		int box_size = skin_ratio * Find_Num_Hand_Pixel(center_depth[i]);
-		int offset = (box_size-1)/2;
+		const int box_size = skin_ratio * Find_Num_Hand_Pixel(center_depth[i]);
+		const int offset = (box_size-1)/2;
 
 		//  (x2,y2)-----(x1,y2)
 		//	   |           | 
@@ -887,6 +889,8 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 		int x2 = cont_center.at(i).x - offset;//upper left corner
 		int y2 = cont_center.at(i).y - offset;					
 		curr_hands_corners[i] = cvPoint(x2, SKIN_Y-y1);
+		bottomRight = cvPoint(x1,y1); 
+		upperLeft   = cvPoint(x2,y2);
 
 		//----->Sort all the points using nearest neighbor
 	
@@ -933,7 +937,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 
 		//cvCircle(colourIm160, cont_center.at(i),2,cvScalar(255,0,0));
 		//cvRectangle(colourIm160, cvPoint(x1,y1) ,cvPoint(x2,y2),cvScalar(0,0,255));
-	 //   cvRectangle(transColor320, cvPoint(x1,y1) ,cvPoint(x2,y2),cvScalar(0,0,255));
+	    cvRectangle(transColor320, cvPoint(x1,y1) ,cvPoint(x2,y2),cvScalar(0,0,255));
 
 		//HACK TODO you should change this ratio depended on hand depth
 		curr_hands_ratio[0] = (float)Find_Num_Hand_Pixel(-1)/MIN_HAND_PIX;
@@ -971,19 +975,46 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	DetectFingertips(grey_640, fingerTips);
 
 	// Draw fingertips
+	fingerIndex.clear();
+
+	const float diffX = abs(upperLeft.x - bottomRight.x)/MIN_HAND_PIX;
+	const float diffY = abs(upperLeft.y - bottomRight.y)/MIN_HAND_PIX;
+
 	REP(i,fingerTips.size())
 	{
 		REP(j,fingerTips[i].size())
 		{
+			//check pixels matching fingertips
+			REP(dy,MIN_HAND_PIX) REP(dx,MIN_HAND_PIX)
+			{
+				CvPoint tmpFingertips;
+				tmpFingertips.x = upperLeft.x+dx*diffX;
+				tmpFingertips.y = upperLeft.y+dy*diffY;
+				if(tmpFingertips.x < 0 
+				|| tmpFingertips.x >= SKIN_X
+				|| tmpFingertips.y < 0
+				|| tmpFingertips.y >= SKIN_Y
+				){
+					continue;
+				}
+
+				if( abs(fingerTips[i][j].x-tmpFingertips.x) <= 2
+				&&  abs(fingerTips[i][j].y-tmpFingertips.y) <= 2)
+				{
+					//OSG‚ÅŠÖ˜A•t‚¯‚Ä‚¢‚éIndex‚Ì‘–¸•ûŒü‚É‚æ‚Á‚ÄIndex‚Í’è‚Ü‚é
+					fingerIndex.push_back( dx*MIN_HAND_PIX + (MIN_HAND_PIX-1)-dy);
+				}
+			}
 			cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
 		}
 	}
-
-
+	//printf("Upper=(%d,%d) Bottom=(%d,%d)\n",upperLeft.x, upperLeft.y, bottomRight.x, bottomRight.y);
+	//printf("DiffX=%f, DiffY=%f\n",diffX, diffY);
+	//cout << "Finger=" << fingerIndex.size() << endl;
 #ifdef SHOWSEGMENTATION
 	//cvShowImage("Bin", grey_640);
 	cvShowImage("Op_Flow_640",col_640);
-	//cvShowImage("transcolor",transColor320);
+	cvShowImage("transcolor",transColor320);
 #endif
 
 	//memory release
@@ -1067,7 +1098,7 @@ void DetectFingertips(cv::Ptr<IplImage> handMask,
 			}
 			//cout << "Hull size = " << hull.size() << endl;
 			// find upper and lower bounds of the hand and define cutoff threshold (don't consider lower vertices as fingers)
-			int upper = 640, lower = 0;
+			int upper = 600, lower = 0;
 			for (unsigned int j=0; j<hull.size(); j++) {
 				int idx = hull[j]; // corner index
 				if (approxCurve[idx].y < upper) upper = approxCurve[idx].y;
