@@ -827,6 +827,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	IplImage* depthImResized  = cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_32F, 1);
 	IplImage* colourIm640	  = cvCreateImage(CAPTURE_SIZE, IPL_DEPTH_8U, 3);
 	cvResize(transDepth320, depthImResized);
+	cvSmooth(depthImResized, depthImResized, CV_MEDIAN, 5);
 
 	//----->Threshold too near region from Kinect
 	for ( int i = 0 ; i < transDepth320->height ; i ++ )
@@ -903,7 +904,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 		cvSetImageROI(depthImResized, cvRect(x2, y2 ,box_size,box_size));
 
 		cvResize(depthImResized, depth11, CV_INTER_NN);
-		cvSmooth(depth11, depth11_2, CV_MEDIAN);
+		//cvSmooth(depth11, depth11_2, CV_MEDIAN, 3);
 
 		//int resize_ratio_x = SKIN_SEGM_SIZE.width / MIN_HAND_PIX;
 		//int resize_ratio_y = SKIN_SEGM_SIZE.height/ MIN_HAND_PIX;
@@ -911,8 +912,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 		for(int j = 0; j < MIN_HAND_PIX; j++) {
 			for(int k = 0; k < MIN_HAND_PIX; k++) {
 				int ind = j * MIN_HAND_PIX + k;
-				//modified "float" to "int" value to reduce an error
-				hand_depth_grids[i][ind] = CV_IMAGE_ELEM(depth11_2, float, ((int)MIN_HAND_PIX-1)-k, j) - depth_offset ;
+				hand_depth_grids[i][ind] = CV_IMAGE_ELEM(depth11, float, ((int)MIN_HAND_PIX-1)-k, j) - depth_offset ;
 			}
 		}
 
@@ -1005,7 +1005,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 					fingerIndex.push_back( dx*MIN_HAND_PIX + (MIN_HAND_PIX-1)-dy);
 				}
 			}
-			cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
+			cvCircle(transColor320, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
 		}
 	}
 	//printf("Upper=(%d,%d) Bottom=(%d,%d)\n",upperLeft.x, upperLeft.y, bottomRight.x, bottomRight.y);
@@ -1013,7 +1013,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	//cout << "Finger=" << fingerIndex.size() << endl;
 #ifdef SHOWSEGMENTATION
 	//cvShowImage("Bin", grey_640);
-	cvShowImage("Op_Flow_640",col_640);
+	//cvShowImage("Op_Flow_640",col_640);
 	cvShowImage("transcolor",transColor320);
 #endif
 
