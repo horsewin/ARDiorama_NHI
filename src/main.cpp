@@ -6,6 +6,7 @@
 //#define USE_PARTICLES 1
 #define UPDATE_TRIMESH 1
 #define SIM_FREQUENCY 10
+#define SHOWSEGMENTATION
 
 #include "main.h"
 
@@ -35,7 +36,7 @@
 
 //Controller Input
 #include "Controls/KeyboardControls.h"
-#include "Controls/XBoxControls.h"
+//#include "Controls/XBoxControls.h"
 
 //Network using VRPN
 #ifdef USE_ARMM_VRPN
@@ -63,7 +64,7 @@ using namespace xn;
 
 bt_ARMM_world *m_world;
 KeyboardController *kc;
-XboxController *xc;
+//XboxController *xc;
 
 // OpenNI Global
 Context niContext;
@@ -90,6 +91,8 @@ void TransformImage(IplImage* depthIm, IplImage* ResDepth, float markerDepth, Cv
 void UpdateHandRegions();
 void removeNoise( IplImage* src, int size );
 void FindHands(IplImage *depthIm, IplImage *colourIm);
+void DetectFingertips(cv::Mat handMask);
+void DetectFingertips(cv::Ptr<IplImage> handMask, vector< vector<cv::Point> > & fingerTips);
 int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) ;
 void UpdateAllHands();
 int Find_Num_Hand_Pixel(float depth);
@@ -300,7 +303,7 @@ int main(int argc, char* argv[])
 
 	//controls
 	KeyboardController *kc = new KeyboardController(m_world);
-	XboxController *xc = new XboxController(m_world);
+	//XboxController *xc = new XboxController(m_world);
 
 	loadKinectTransform(KINECT_TRANSFORM_FILENAME);
 
@@ -371,15 +374,19 @@ int main(int argc, char* argv[])
 
 		//check input device 
 		input_key = kc->check_input(); 
+		//xc->check_input();
 #ifdef USE_ARMM_VRPN_RECEIVER
 		if( pass_key != 0){
 			kc->check_input(pass_key);
 			pass_key = 0;
 		}
 #endif
-		xc->check_input();
-		if(kinectTransform) { // kinect transform as cvmat* for use
-			if( counter >= SIM_FREQUENCY) {
+
+		// kinect transform as cvmat* for use
+		if(kinectTransform) 
+		{ 
+			if( counter >= SIM_FREQUENCY) 
+			{
 #ifdef UPDATE_TRIMESH
 				inpaintDepth(&niDepthMD, true); 
 				memcpy(depthIm->imageData, niDepthMD.Data(), depthIm->imageSize);				
@@ -410,6 +417,7 @@ int main(int argc, char* argv[])
 			}
 			//do hand pose recognition
 			m_world->Update();
+
 			//(B)normal client only rendering
 			RenderScene(arImage, capture);
 		}
@@ -463,7 +471,7 @@ int main(int argc, char* argv[])
 	delete kinectReg;
 	cvReleaseMat(&RegistrationParams);
 	delete kc;
-	delete xc;
+	//delete xc;
 
 	return 0;
 }
@@ -777,11 +785,11 @@ void registerMarker()
 
 		//Recreat world and controls
 		delete kc;
-		delete xc;
+		//delete xc;
 		delete m_world;
 		m_world = new bt_ARMM_world();
 		kc = new KeyboardController(m_world);
-		xc = new XboxController(m_world);
+		//xc = new XboxController(m_world);
 
 		m_world->setWorldDepth(MARKER_DEPTH);
 		m_world->setWorldScale(WORLD_SCALE);
@@ -814,10 +822,10 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	TransformImage(colourIm, transColor320, MARKER_DEPTH, SKIN_SEGM_SIZE, false);
 
 	//Create image storages
-	IplImage* depthTmp				= cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_8U, 1);
+	IplImage* depthTmp		  = cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_8U, 1);
 	IplImage* colourImResized = cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_8U, 3);
-	IplImage* depthImResized	= cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_32F, 1);
-	IplImage* colourIm640			= cvCreateImage(cvSize(640, 480), IPL_DEPTH_8U, 3);
+	IplImage* depthImResized  = cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_32F, 1);
+	IplImage* colourIm640	  = cvCreateImage(CAPTURE_SIZE, IPL_DEPTH_8U, 3);
 	cvResize(transDepth320, depthImResized);
 
 	//----->Threshold too near region from Kinect
@@ -865,7 +873,8 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	float skin_ratio = SKIN_SEGM_SIZE.width / MESH_SIZE.width;
 	assert( fabs( (SKIN_SEGM_SIZE.height / MESH_SIZE.height) - skin_ratio ) < 0.1); 
 
-	for(int i = 0; i < num_hand_in_scene; i++) {
+	REP(i,num_hand_in_scene)
+	{
 		center_depth[i] = CV_IMAGE_ELEM(transDepth320, float, cont_center.at(i).y, cont_center.at(i).x);
 		int box_size = skin_ratio * Find_Num_Hand_Pixel(center_depth[i]);
 		int offset = (box_size-1)/2;
@@ -916,13 +925,15 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 		//----->Display
 		char center_depth_print[50];
 		sprintf(center_depth_print,"%.2lf cm", center_depth[i]);
-		CvFont font;//tmp
-		cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, 0.3 * skin_ratio , 0.3 * skin_ratio , 0, 1);//tmp
-		cvPutText (colourIm160, center_depth_print,  cont_center.at(i), &font, cvScalar(0,255,0));
 
-		cvCircle(colourIm160, cont_center.at(i),2,cvScalar(255,0,0));
-		cvRectangle(colourIm160, cvPoint(x1,y1) ,cvPoint(x2,y2),cvScalar(0,0,255));
-    cvRectangle(transColor320, cvPoint(x1,y1) ,cvPoint(x2,y2),cvScalar(0,0,255));
+		//for displaying distance from ground
+		//CvFont font;//tmp
+		//cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX|CV_FONT_ITALIC, 0.3 * skin_ratio , 0.3 * skin_ratio , 0, 1);//tmp
+		//cvPutText (colourIm160, center_depth_print,  cont_center.at(i), &font, cvScalar(0,255,0));
+
+		//cvCircle(colourIm160, cont_center.at(i),2,cvScalar(255,0,0));
+		//cvRectangle(colourIm160, cvPoint(x1,y1) ,cvPoint(x2,y2),cvScalar(0,0,255));
+	 //   cvRectangle(transColor320, cvPoint(x1,y1) ,cvPoint(x2,y2),cvScalar(0,0,255));
 
 		//HACK TODO you should change this ratio depended on hand depth
 		curr_hands_ratio[0] = (float)Find_Num_Hand_Pixel(-1)/MIN_HAND_PIX;
@@ -951,8 +962,29 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	//for(int i = 0; i < num_hand_in_scene; i++) {
 	//	cvCircle(col_640,cvPoint(curr_hands_corners[i].x, 160 - curr_hands_corners[i].y),5,cvScalar(0,255,255));
 	//}
+
+	// Finger detection
+	vector< vector<cv::Point> > fingerTips;
+	cv::Ptr<IplImage> grey_640 = cvCreateImage(cvGetSize(col_640), 8, 1);	
+	cvCvtColor(col_640, grey_640, CV_BGR2GRAY);	
+	cvThreshold(grey_640, grey_640, 1, 255, cv::THRESH_BINARY);
+	DetectFingertips(grey_640, fingerTips);
+
+	// Draw fingertips
+	REP(i,fingerTips.size())
+	{
+		REP(j,fingerTips[i].size())
+		{
+			cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
+		}
+	}
+
+
+#ifdef SHOWSEGMENTATION
+	//cvShowImage("Bin", grey_640);
 	cvShowImage("Op_Flow_640",col_640);
-  cvShowImage("transcolor",transColor320);
+	//cvShowImage("transcolor",transColor320);
+#endif
 
 	//memory release
 	delete center_depth;
@@ -965,7 +997,104 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 }
 #endif
 
-int Find_Num_Hand_Pixel(float depth) {
+void DetectFingertips(cv::Ptr<IplImage> handMask, 
+	vector< vector<cv::Point> > & fingerTips)
+{
+	fingerTips.clear();
+	vector< vector<cv::Point> > contours;
+
+	//cv::findContours(src, contours, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+	CvMemStorage* storage   = cvCreateMemStorage( 0 );     
+	CvSeq* cs = NULL;    
+	CvScalar black          = CV_RGB( 0, 0, 0 ); 
+	CvScalar white          = CV_RGB( 255, 255, 255 ); 
+	int contours_count= cvFindContours( handMask, storage, &cs, sizeof( CvContour ), CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE );  
+
+	int loop = 0;
+	contours.resize(contours_count);
+    for( ; cs!= 0; cs= cs->h_next, loop++)
+    {
+        REP(i,cs->total)
+        {
+			CvPoint tmpPoint = *CV_GET_SEQ_ELEM( CvPoint, cs, i );
+			contours[loop].push_back(cv::Point(tmpPoint));
+        }
+
+		cv::Mat contourMat = cv::Mat(contours[loop]);
+		double area = cv::contourArea(contourMat);
+
+		if (area > 200)  { // possible hand
+			vector<cv::Point> tmp_fingertips;
+			tmp_fingertips.clear();
+
+			cv::Scalar center = mean(contourMat);
+			cv::Point centerPoint = cv::Point(static_cast<int>(center.val[0]), static_cast<int>(center.val[1]) );
+			vector<cv::Point> approxCurve;
+			CvSeq *approx = cvApproxPoly(cs, sizeof(CvContour), NULL, CV_POLY_APPROX_DP, 15);
+			//cv::approxPolyDP(contourMat, approxCurve, 15, true); //error part
+
+			REP(i,approx->total)
+			{
+				CvPoint tmpPoint = *CV_GET_SEQ_ELEM( CvPoint, approx, i );
+				approxCurve.push_back(cv::Point(tmpPoint));
+			}
+
+			vector<int> hull;
+			vector<cv::Point> hullShape;
+			//cv::convexHull(cv::Mat(approxCurve), hull);
+			CvSeq* h = cvConvexHull2(approx,0,CV_CLOCKWISE,0);
+			//cout << "hogehoge4" << endl;
+
+
+			REP(i,h->total)
+			{
+				//CvPoint tmpPoint = *CV_GET_SEQ_ELEM( CvPoint, h, i ); //this code occurs assertion
+				CvPoint tmpPoint = **CV_GET_SEQ_ELEM( CvPoint*, h, i ); //this one is okay?
+				hullShape.push_back(cv::Point(tmpPoint));
+			}
+
+			int approxPointer = 0;
+			REP(i,hullShape.size())
+			{
+				for(;approxPointer<approxCurve.size();approxPointer++)
+				{
+					if(hullShape[i] == approxCurve[approxPointer]){
+						hull.push_back(approxPointer);
+						break;
+					}
+				}
+			}
+			//cout << "Hull size = " << hull.size() << endl;
+			// find upper and lower bounds of the hand and define cutoff threshold (don't consider lower vertices as fingers)
+			int upper = 640, lower = 0;
+			for (unsigned int j=0; j<hull.size(); j++) {
+				int idx = hull[j]; // corner index
+				if (approxCurve[idx].y < upper) upper = approxCurve[idx].y;
+				if (approxCurve[idx].y > lower) lower = approxCurve[idx].y;
+			}
+
+			float cutoff = lower - (lower - upper) * 0.1f;
+			// find interior angles of hull corners
+			for (unsigned int j=0; j<hull.size(); j++) {
+				int idx = hull[j]; // corner index
+				int pdx = idx == 0 ? approxCurve.size() - 1 : idx - 1; //  predecessor of idx
+				int sdx = idx == approxCurve.size() - 1 ? 0 : idx + 1; // successor of idx
+				cv::Point v1 = approxCurve[sdx] - approxCurve[idx];
+				cv::Point v2 = approxCurve[pdx] - approxCurve[idx];
+				double angle = acos( (v1.x*v2.x + v1.y*v2.y) / (cv::norm(v1) * cv::norm(v2)) );
+				// low interior angle + within upper 90% of region -> we got a finger
+				if ( angle < 1 && approxCurve[idx].y < cutoff) {
+					tmp_fingertips.push_back(cv::Point( approxCurve[idx].x , approxCurve[idx].y) );
+				}
+			}
+			fingerTips.push_back(tmp_fingertips);
+		}
+	}
+}
+
+int Find_Num_Hand_Pixel(float depth) 
+{
 	float box_pix = (HAND_BOX_CM/WORLD_SCALE+depth*KINECT_PIX_PER_DEPTH);
 	int ans;
 	if(((int) ceil(box_pix)%2) == 0)

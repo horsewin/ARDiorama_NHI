@@ -12,7 +12,8 @@ const int		CVCONTOUR_APPROX_LEVEL = 1;
 namespace{
 
 // Remove certain contour with area less than threshold
-void removeNoise( IplImage* src, int size ){    
+void removeNoise( IplImage* src, int size )
+{    
 	IplImage* tmp = cvCreateImage(cvSize(src->width, src->height),IPL_DEPTH_8U,1);
 	cvCopyImage(src, tmp);
 	CvMemStorage* storage   = cvCreateMemStorage( 0 );     
