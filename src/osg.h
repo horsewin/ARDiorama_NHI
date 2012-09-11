@@ -790,30 +790,31 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 	{
 		int idx =	fingerIndex.at(fingerTips);
 
-		if(grid[idx] > 0 && grid[idx]<100){}
-		else
+		//if(grid[idx] > 0 && grid[idx]<100){}
+		//else
 		{
 			bool fitting = false;
 			int shift = 1;
 			do{
+				int tmpIdx;
 				for(int i=-shift; i<=shift; i++)
 				{
 					for(int j=-shift; j<=shift; j++)
 					{
-						int tmpIdx = idx + (i*MIN_HAND_PIX+j);
+						tmpIdx = idx + (i*MIN_HAND_PIX+j);
 						if(tmpIdx < 0 || tmpIdx >= HAND_GRID_SIZE) continue;
 						if(grid[tmpIdx] > 0 && grid[tmpIdx]<100)
 						{
-							idx = tmpIdx;
-							fitting = true;
+							//fitting = true;
+							hand_object_shape_array[tmpIdx]->setColor(osg::Vec4(1, 0, 0, 1));
 						}
 					}
-					if(fitting) break;
+					//if(fitting) break;
 				}
 				shift++;
-			}while(!fitting || shift<=2);
+			//}while(!fitting || shift<=2);
+			}while(shift<=2);
 		}
-		hand_object_shape_array[idx]->setColor(osg::Vec4(1, 0, 0, 1));
 	}
 }
 

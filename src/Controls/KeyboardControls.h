@@ -106,13 +106,14 @@ public:
 				//int index = world->create_Box();
 				//osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				world->ChangeAttribute(20, index);
+				world->ChangeAttribute(30, index);
 
 				return 79;
 			}
 
 			if (getKey(80)) { //p
-				string modelname = "Data/Cars/rec2/BlueCow.3ds";
+				//string modelname = "Data/Cars/rec2/BlueCow.3ds";
+				string modelname = "Data/Cars/rec2/Bluecow.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
 
@@ -122,7 +123,7 @@ public:
 				//osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
 				//Virtual_Objects_Count++;
 
-				world->ChangeAttribute(30, index);
+				world->ChangeAttribute(15, index);
 				return 80;
 			}
 

@@ -197,7 +197,7 @@ namespace{
 		count_frame++;
 		double current_time = static_cast<double>(cv::getTickCount());
 		time_spent += ( current_time - previous_time ) / cv::getTickFrequency();		
-		if( count_frame == 1){ // you can change the frame count if you want
+		if( count_frame == 30){ // you can change the frame count if you want
 			if( fps.size() < MAX_FPS){
 				//fps.push_back(count_frame/time_spent);
 				fps.push_back(1000*time_spent/count_frame);
@@ -388,12 +388,16 @@ int main(int argc, char* argv[])
 			if( counter >= SIM_FREQUENCY) 
 			{
 #ifdef UPDATE_TRIMESH
+				//TickCountAverageBegin();
+
 				inpaintDepth(&niDepthMD, true); 
 				memcpy(depthIm->imageData, niDepthMD.Data(), depthIm->imageSize);				
 				TransformImage(depthIm, transDepth160, MARKER_DEPTH, MESH_SIZE, true);
 				GenerateTrimeshGroundFromDepth(transDepth160, MARKER_DEPTH); /*Trimesh generation*/
 				m_world->updateTrimeshRefitTree(ground_grid);//opencl?
 				osg_UpdateHeightfieldTrimesh(ground_grid);//opencl?
+
+				//TickCountAverageEnd();
 #endif
 
 #ifdef SIM_PARTICLES
@@ -407,7 +411,9 @@ int main(int argc, char* argv[])
 #ifdef USE_SKIN_SEGMENTATION /*Skin color segmentation*/ // may be reduce resolution first as well as cut off depth make processing faster
 				// (2)Sphere representation
 				FindHands(depthIm, colourIm);
+				//TickCountAverageBegin();
 				UpdateAllHands();
+				//TickCountAverageEnd();
 #endif
 
 #ifdef USE_PARTICLES
@@ -416,7 +422,9 @@ int main(int argc, char* argv[])
 				counter++;
 			}
 			//do hand pose recognition
+			//TickCountAverageBegin();
 			m_world->Update();
+			//TickCountAverageEnd();
 
 			//(B)normal client only rendering
 			RenderScene(arImage, capture);
@@ -443,8 +451,12 @@ int main(int argc, char* argv[])
  //   }
  //   ARMM_img_server->send_end_frame(0, MESH_SIZE.width-1, 0, MESH_SIZE.height-1);
  //   ARMM_img_server->mainloop();
-	//Exec data transmission
+
+
+	//<--Exec data transmission
+	//TickCountAverageBegin();
 	m_Connection->mainloop();
+	//TickCountAverageEnd();
 #endif
 
 #ifdef USE_OPTICAL_FLOW
@@ -817,6 +829,9 @@ void registerMarker()
 #ifdef USE_SKIN_SEGMENTATION
 void FindHands(IplImage *depthIm, IplImage *colourIm) 
 {
+	//<----(Hand Segmentation) Count up
+	//TickCountAverageBegin();
+
 	//----->Transform both depth and color
 	TransformImage(depthIm, transDepth320, MARKER_DEPTH, SKIN_SEGM_SIZE, true);
 	TransformImage(colourIm, transColor320, MARKER_DEPTH, SKIN_SEGM_SIZE, false);
@@ -966,8 +981,11 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	//for(int i = 0; i < num_hand_in_scene; i++) {
 	//	cvCircle(col_640,cvPoint(curr_hands_corners[i].x, 160 - curr_hands_corners[i].y),5,cvScalar(0,255,255));
 	//}
+	//<-- (HAND SEGMENTATION) end
+	//TickCountAverageEnd();
 
-	// Finger detection
+	//<---Finger detection
+	//TickCountAverageBegin();
 	vector< vector<cv::Point> > fingerTips;
 	cv::Ptr<IplImage> grey_640 = cvCreateImage(cvGetSize(col_640), 8, 1);	
 	cvCvtColor(col_640, grey_640, CV_BGR2GRAY);	
@@ -1005,16 +1023,17 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 					fingerIndex.push_back( dx*MIN_HAND_PIX + (MIN_HAND_PIX-1)-dy);
 				}
 			}
-			cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
+			//cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
 		}
 	}
 	//printf("Upper=(%d,%d) Bottom=(%d,%d)\n",upperLeft.x, upperLeft.y, bottomRight.x, bottomRight.y);
 	//printf("DiffX=%f, DiffY=%f\n",diffX, diffY);
 	//cout << "Finger=" << fingerIndex.size() << endl;
+	//<--(FINGERTIPS DETECTION) end
+	//TickCountAverageEnd();
 #ifdef SHOWSEGMENTATION
-	//cvShowImage("Bin", grey_640);
-	cvShowImage("Op_Flow_640",col_640);
-	cvShowImage("transcolor",transColor320);
+	//cvShowImage("Op_Flow_640",col_640);
+	//cvShowImage("transcolor",transColor320);
 #endif
 
 	//memory release

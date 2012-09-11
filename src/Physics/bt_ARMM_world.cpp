@@ -765,14 +765,15 @@ void bt_ARMM_world::turnEngineRight(int index) {
 	//printf("turn right \n");
 }
 
-void bt_ARMM_world::resetCarScene(int car_index) {
+void bt_ARMM_world::resetCarScene(int car_index)
+{
 	//for (int i =0; i < NUM_CAR; i++) {
 		Car_Array[car_index].gVehicleSteering = 0.f;
 		Car_Array[car_index].gBreakingForce = Car_Array[car_index].defaultBreakingForce;
 		Car_Array[car_index].gEngineForce = 0.f;
 
 		//m_carChassis->setCenterOfMassTransform(btTransform::getIdentity());
-		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5,-5,5)));
+		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5+100,-5,5)));
 		m_carChassis.at(car_index)->setLinearVelocity(btVector3(0,0,0));
 		m_carChassis.at(car_index)->setAngularVelocity(btVector3(0,0,0));
 		m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis.at(car_index)->getBroadphaseHandle(),m_dynamicsWorld->getDispatcher());
@@ -888,8 +889,10 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 
 osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
 {
+	osg::Vec3d pos =  osgbCollision::asOsgVec3(btHandPos*10);
+	pos.set(pos.x(), pos.y(), pos.z()/10);
     osg::ref_ptr< osg::Geode > geode( new osg::Geode );
-    const osg::Vec3 llCorner( 130.0, -5.0, 0.0 );
+	const osg::Vec3 llCorner(pos);
     const osg::Vec3 uVec( 100.0, 0.0, 0.0 );
     const osg::Vec3 vVec( 0.0, 100.0, 0.0 ); // Must be at a slight angle for wind to catch it.
     osg::Geometry* geom = osgwTools::makePlane( llCorner,
