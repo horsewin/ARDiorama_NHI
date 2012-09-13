@@ -10,6 +10,9 @@
 extern int collide_counter;
 extern double prev_collide_clock;
 
+const char * DATABASEDIR = "../../../Dropbox/Lab/ModelDatabase/";
+
+double x = 0, y=0, z=0;
 class KeyboardController: public Controller 
 {
 public:
@@ -34,15 +37,19 @@ public:
 		//Car Number 1
 		if (getKey(VK_UP)) {
 			world->accelerateEngine(0);
+			world->ChangeRotation(10,0,0);
 		} else if (getKey(VK_DOWN)) {
 			world->decelerateEngine(0);
+			world->ChangeRotation(-10,0,0);	
 		} else {
 			world->resetEngineForce(0);
 		}
 		if (getKey(VK_LEFT)) {
 			world->turnEngineLeft(0);
+			world->ChangeRotation(0,10,0);
 		} else if (getKey(VK_RIGHT)) {
 			world->turnEngineRight(0);
+			world->ChangeRotation(0,-10,0);
 		} else {
 			 world->turnReset(0);
 		}
@@ -52,13 +59,18 @@ public:
 			world->ToggleSphereRep();
 		} else if (getKey(83)) {//S
 			world->decelerateEngine(1);
+			//world->ChangeRotation(0,45,0);
 		} else {
 			world->resetEngineForce(1);
 		}
 		if (getKey(65)) {//A
 			world->turnEngineLeft(1);
+			x += 0.1;
+			world->ChangeRotation(x,y,z);
 		} else if (getKey(68)) {//D
 			world->turnEngineRight(1);
+			x -= 0.1;
+			world->ChangeRotation(x,y,z);
 		} else {
 			 world->turnReset(1);
 		}
@@ -96,15 +108,17 @@ public:
 				return 66;
 			}
 			if (getKey(77)) { //M
-				world->ChangeAttribute();
+				//world->ChangeAttribute();
+				y += 0.1;
+				world->ChangeRotation(x,y,z);
+				printf("%f,%f,%f\n",x,y,z);
 				return 77;
 			}
 			if (getKey(79)) { //o
-				string modelname = "Data/Cars/Torus.3ds";
+				string modelname(DATABASEDIR);
+				modelname+="Newcow/Newcow.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
-				//int index = world->create_Box();
-				//osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
 				world->ChangeAttribute(30, index);
 
@@ -112,18 +126,14 @@ public:
 			}
 
 			if (getKey(80)) { //p
-				//string modelname = "Data/Cars/rec2/BlueCow.3ds";
-				string modelname = "Data/Cars/rec2/Bluecow.3ds";
+				string modelname(DATABASEDIR);
+				modelname+="Newcow/Newcow.3ds";
+				//string modelname = "HatuneMiku.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
-
 				Virtual_Objects_Count++;
-
-				//int index = world->create_Box();
-				//osgAddObjectNode(osgNodeFromBtBoxShape(CUBE_SIZE,world->get_Object_Transform(index)));
-				//Virtual_Objects_Count++;
-
 				world->ChangeAttribute(15, index);
+
 				return 80;
 			}
 

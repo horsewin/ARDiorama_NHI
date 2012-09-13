@@ -76,11 +76,12 @@ public:
 		light = new osg::Light();
 		light->setLightNum(0);
 		light->setAmbient(osg::Vec4(0.4f,0.4f,0.4f,1.0f));
-		light->setDiffuse(osg::Vec4(1.0f,1.0f,1.0f,1.0f));
+		light->setDiffuse(osg::Vec4(0.8f,0.8,0.8f,1.0f));
 		light->setSpecular(osg::Vec4(0.4f,0.4f,0.4f,1.0f));
-		light->setConstantAttenuation(0.2f);
-		light->setLinearAttenuation(0.05f);
-		light->setQuadraticAttenuation(0.05f);
+		//light->setConstantAttenuation(0.2f);
+		//light->setLinearAttenuation(0.05f);
+		//light->setQuadraticAttenuation(0.05f);
+		light->setPosition(osg::Vec4(15, -5, 20, 0.0));
 
 		osg::LightSource* lightSource = new osg::LightSource;	
 		lightSource->setLight(light);
@@ -406,7 +407,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 	car_trans1->setAttitude(osg::Quat(
 		osg::DegreesToRadians(0.f), osg::Vec3d(1.0, 0.0, 0.0),
 		osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 1.0, 0.0),
-		osg::DegreesToRadians(180.f), osg::Vec3d(0.0, 0.0, 1.0)
+		osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 0.0, 1.0)
 		));
 	car_trans1->setPosition(osg::Vec3d(0.0, 0.0, 3.0));//shift body higher 3 units
 	car_trans1->addChild(car1.get());
@@ -435,7 +436,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 	car_trans2->setAttitude(osg::Quat(
 		osg::DegreesToRadians(0.f), osg::Vec3d(1.0, 0.0, 0.0),
 		osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 1.0, 0.0),
-		osg::DegreesToRadians(180.f), osg::Vec3d(0.0, 0.0, 1.0)
+		osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 0.0, 1.0)
 		));
 	car_trans2->setPosition(osg::Vec3d(0.0, 0.0, 8.0));
 	car_trans2->addChild(car2);
@@ -464,18 +465,20 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 	car_transform.push_back(new osg::PositionAttitudeTransform());
 	car_transform.at(0)->setAttitude(osg::Quat(0,0,0,1));
 	car_transform.at(0)->addChild(car_trans1);
-	car_transform.at(0)->setNodeMask(castShadowMask );
+	car_transform.at(0)->setNodeMask(rcvShadowMask|castShadowMask);
 
 	car_transform.push_back(new osg::PositionAttitudeTransform());
 	car_transform.at(1)->setAttitude(osg::Quat(0,0,0,1));
 	car_transform.at(1)->addChild(car_trans2);
-	car_transform.at(1)->setNodeMask(castShadowMask );
+	car_transform.at(1)->setNodeMask(rcvShadowMask|castShadowMask);
 
 #endif /* CAR_SIMULATION == 1 */
 
 	// Set shadow node
-//V	osg::ref_ptr<osgShadow::ShadowTexture> sm = new osgShadow::ShadowTexture;
-	osg::ref_ptr<osgShadow::MyShadowMap> sm = new osgShadow::MyShadowMap; //Adrian
+	//osg::ref_ptr<osgShadow::ShadowTexture> sm = new osgShadow::ShadowTexture; //V
+	//osg::ref_ptr<osgShadow::MyShadowMap> sm = new osgShadow::MyShadowMap; //Adrian
+	osg::ref_ptr<osgShadow::ShadowMap> sm = new osgShadow::ShadowMap; //Atsushi
+	//sm->setLight(arTrackedNode->getLight()); //Atsushi
 	sm->setTextureSize( osg::Vec2s(1024, 1024) ); //Adrian
 	sm->setTextureUnit( 1 );
 
@@ -485,11 +488,11 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 	shadowedScene->setCastsShadowTraversalMask( castShadowMask );
 	shadowedScene->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON); //Adrian  
 
-//V	osg::ref_ptr<osg::LightSource> source = new osg::LightSource;
-//V	source->getLight()->setPosition( osg::Vec4(4.0, 4.0, 10.0, 0.0) );
-//V	source->getLight()->setAmbient( osg::Vec4(0.2, 0.2, 0.2, 1.0) );
-//V	source->getLight()->setDiffuse( osg::Vec4(0.8, 0.8, 0.8, 1.0) );
-//V	shadowedScene->addChild(source);
+	osg::ref_ptr<osg::LightSource> source = new osg::LightSource; //V
+	source->getLight()->setPosition( osg::Vec4(4.0, 4.0, 10.0, 0.0) ); //V
+	source->getLight()->setAmbient( osg::Vec4(0.2, 0.2, 0.2, 1.0) ); //V
+	source->getLight()->setDiffuse( osg::Vec4(0.8, 0.8, 0.8, 1.0) ); //V
+	shadowedScene->addChild(source);
 
 #if CAR_SIMULATION == 1
 	shadowedScene->addChild( car_transform.at(0) );
@@ -692,12 +695,12 @@ void osgAddObjectNode(osg::Node* n)
 	obj_transform_array.push_back(new osg::PositionAttitudeTransform());
 	int index = obj_node_array.size()-1;
 	obj_transform_array.at(index)->setAttitude(osg::Quat(
-		osg::DegreesToRadians(0.f), osg::Vec3d(1.0, 0.0, 0.0),
-		osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 1.0, 0.0),
+		osg::DegreesToRadians(50.f), osg::Vec3d(1.0, 0.0, 0.0),
+		osg::DegreesToRadians(-50.f), osg::Vec3d(0.0, 1.0, 0.0),
 		osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 0.0, -1.0)
 		));
 	obj_transform_array.at(index)->setPosition(osg::Vec3d(0.0, 0.0, 0.0));
-	obj_transform_array.at(index)->setNodeMask(castShadowMask );
+	obj_transform_array.at(index)->setNodeMask(rcvShadowMask | castShadowMask);
 	obj_transform_array.at(index)->addChild(obj_node_array.at(index));
 
 	shadowedScene->addChild( obj_transform_array.at(index) );
@@ -705,6 +708,7 @@ void osgAddObjectNode(osg::Node* n)
 	shadowedScene->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
 
 	printf("Object number: %d added \n", index+1);
+	std::cout << obj_transform_array.at(index)->getAttitude() << endl;
 }
 
 void osg_createHand(int index, float x, float y, float world_scale, float ratio) 

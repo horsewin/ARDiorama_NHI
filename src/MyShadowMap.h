@@ -20,6 +20,7 @@
 #include <osg/LightSource>
 
 #include <osgShadow/ShadowTechnique>
+#include <osgShadow/ShadowMap>
 
 namespace osgShadow {
 

@@ -773,7 +773,7 @@ void bt_ARMM_world::resetCarScene(int car_index)
 		Car_Array[car_index].gEngineForce = 0.f;
 
 		//m_carChassis->setCenterOfMassTransform(btTransform::getIdentity());
-		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5+100,-5,5)));
+		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5,-5,5)));
 		m_carChassis.at(car_index)->setLinearVelocity(btVector3(0,0,0));
 		m_carChassis.at(car_index)->setAngularVelocity(btVector3(0,0,0));
 		m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis.at(car_index)->getBroadphaseHandle(),m_dynamicsWorld->getDispatcher());
@@ -858,6 +858,7 @@ int bt_ARMM_world::create_Box() {
 	return index;
 }
 
+//オブジェクトの回転・並進をさせるためにはmotion stateの値を変更
 int bt_ARMM_world::create_3dsmodel(string modelname)
 {
 	//load 3ds model
@@ -871,7 +872,7 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 	osg::ref_ptr<osg::Node> sample = osgDB::readNodeFile(modelname.c_str());
 
 	//create bounding box
-	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0))); 
+	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));  //ここをいじる
 	btRigidBody* btObject = new btRigidBody(50, state, NULL);
 	btObject->setCollisionShape( osgbCollision::btTriMeshCollisionShapeFromOSG(sample.get() ) );
 	btObject->setCollisionFlags( btCollisionObject::CF_KINEMATIC_OBJECT );
@@ -1136,11 +1137,20 @@ void bt_ARMM_world::ChangeAttribute(int pos, int index)
 	m_objectsBody.at(index)->getMotionState()->getWorldTransform(trans);
 	trans.getOrigin().setX(pos);
 	trans.getOrigin().setY(-5);
-	trans.getOrigin().setZ(0);
+	trans.getOrigin().setZ(2);
 	m_objectsBody.at(index)->getMotionState()->setWorldTransform(trans);
 	m_objectsBody.at(index)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
 
 	return;
+}
+
+void bt_ARMM_world::ChangeRotation(double x, double y, double z)
+{
+	btTransform trans;
+	m_objectsBody.at(0)->getMotionState()->getWorldTransform(trans);
+	trans.getRotation().setValue(x,y,z,1);
+	m_objectsBody.at(0)->getMotionState()->setWorldTransform(trans);
+
 }
 
 /*********** Private Method ************/

@@ -179,7 +179,7 @@ public:
 
 		//Function for kinematic box
 		void ChangeAttribute(int pos = 0, int index = 0);
-
+		void ChangeRotation(double x, double y, double z);
 		virtual const btSoftRigidDynamicsWorld*	getSoftDynamicsWorld() const
 		{
 			///just make it a btSoftRigidDynamicsWorld please
