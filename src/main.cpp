@@ -1167,7 +1167,8 @@ int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) {
 }
 
 void UpdateAllHands() {
-	for(int i = 0; i < m_world->getTotalNumberHand();i++) {
+	for(int i = 0; i < m_world->getTotalNumberHand();i++) 
+	{
 		//In this case, spheres are displayed on the bottom-left corner of the marker
 		m_world->updateHandDepth(i, curr_hands_corners[i].x, curr_hands_corners[i].y, ratio, hand_depth_grids[i]);
 		btTransform trans = m_world->getHandTransform(i);

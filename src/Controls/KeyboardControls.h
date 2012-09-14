@@ -111,28 +111,27 @@ public:
 				//world->ChangeAttribute();
 				y += 0.1;
 				world->ChangeRotation(x,y,z);
-				printf("%f,%f,%f\n",x,y,z);
 				return 77;
 			}
 			if (getKey(79)) { //o
 				string modelname(DATABASEDIR);
-				modelname+="Newcow/Newcow.3ds";
+				modelname+="ItimatsuCow/ItimatsuCow.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
-				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
+				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(),0.005, world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				world->ChangeAttribute(30, index);
-
+				world->ChangeAttribute(25, -5, 40, index);
+								
 				return 79;
 			}
 
 			if (getKey(80)) { //p
 				string modelname(DATABASEDIR);
-				modelname+="Newcow/Newcow.3ds";
+				modelname+="WoodTable/WoodTable.3ds";
 				//string modelname = "HatuneMiku.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				world->ChangeAttribute(15, index);
+				world->ChangeAttribute(25, -5, 0, index);
 
 				return 80;
 			}

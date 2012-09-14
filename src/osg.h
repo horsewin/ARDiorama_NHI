@@ -41,6 +41,7 @@ extern const int NUMBER_CAR;
 extern const float MIN_HAND_PIX;
 extern const int MAX_NUM_HANDS;
 vector<int> objVectorDeletable;
+vector<int> fingersIdx;
 
 bool WIREFRAME_MODE = false;
 
@@ -790,6 +791,7 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 	}
 
 	//assign fingertips
+	fingersIdx.clear();
 	REP(fingerTips,fingerIndex.size())
 	{
 		int idx =	fingerIndex.at(fingerTips);
@@ -809,6 +811,7 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 						if(tmpIdx < 0 || tmpIdx >= HAND_GRID_SIZE) continue;
 						if(grid[tmpIdx] > 0 && grid[tmpIdx]<100)
 						{
+							fingersIdx.push_back(tmpIdx);
 							//fitting = true;
 							hand_object_shape_array[tmpIdx]->setColor(osg::Vec4(1, 0, 0, 1));
 						}

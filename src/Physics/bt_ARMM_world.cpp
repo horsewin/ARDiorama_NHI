@@ -99,6 +99,7 @@ int collide_counter = 0;
 double prev_collide_clock = 0.0;
 extern int Virtual_Objects_Count;
 extern vector<int> objVectorDeletable;
+extern vector<int> fingersIdx;
 
 int		collide[2];       //indices  of collided objects
 btVector3	pCollision;  //coordinate with a collided object
@@ -198,6 +199,29 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 };
 /** create Collision Callback **/
 
+/** Create Collision Callback  **/
+struct PinchContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCallback
+{	
+	//! Constructor, pass whatever context you want to have available when processing contacts
+	/*! You may also want to set m_collisionFilterGroup and m_collisionFilterMask
+	 *  (supplied by the superclass) for needsCollision() */
+	PinchContactSensorCallback ()
+		: btDiscreteDynamicsWorld::ContactResultCallback()
+	{}
+	
+	//! Called with each contact for your own processing (e.g. test if contacts fall in within sensor parameters)
+	//! indexはよくわからない値が入っていた
+	//! partIdは両方とも0が入ってることがほとんどだった
+	virtual btScalar addSingleResult(btManifoldPoint& cp,
+		const btCollisionObject* colObj0,int partId0,int index0,
+		const btCollisionObject* colObj1,int partId1,int index1)
+	{	
+		//colObj0->setWorldTransform(colObj1->getWorldTransform());
+		return 0; // not actually sure if return value is used for anything...?
+	}
+};
+/** create Collision Callback **/
+
 struct MeshUpdater : public osg::Drawable::UpdateCallback
 {
     MeshUpdater(  btSoftBody* softBody, const unsigned int size )
@@ -264,6 +288,8 @@ void pickingPreTickCallback (btDynamicsWorld *world, btScalar timeStep)
 btVector3 worldMin(-1000,-1000,-1000);
 btVector3 worldMax(1000,1000,1000);
 ContactSensorCallback callback;
+PinchContactSensorCallback pinchcallback;
+
 namespace{
 	double GetMaxNumber(const double & x, const double & y, const double & z){
 		if(x>y){
@@ -773,7 +799,7 @@ void bt_ARMM_world::resetCarScene(int car_index)
 		Car_Array[car_index].gEngineForce = 0.f;
 
 		//m_carChassis->setCenterOfMassTransform(btTransform::getIdentity());
-		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5,-5,5)));
+		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5+100,-5,5)));
 		m_carChassis.at(car_index)->setLinearVelocity(btVector3(0,0,0));
 		m_carChassis.at(car_index)->setAngularVelocity(btVector3(0,0,0));
 		m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis.at(car_index)->getBroadphaseHandle(),m_dynamicsWorld->getDispatcher());
@@ -872,7 +898,7 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 	osg::ref_ptr<osg::Node> sample = osgDB::readNodeFile(modelname.c_str());
 
 	//create bounding box
-	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));  //ここをいじる
+	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(10,0,0)));  //ここをいじる
 	btRigidBody* btObject = new btRigidBody(50, state, NULL);
 	btObject->setCollisionShape( osgbCollision::btTriMeshCollisionShapeFromOSG(sample.get() ) );
 	btObject->setCollisionFlags( btCollisionObject::CF_KINEMATIC_OBJECT );
@@ -1046,6 +1072,7 @@ void bt_ARMM_world::createHand(int hand_x, int hand_y, int sphere_resolution, fl
 	float global_x, global_y;
 	CalcGlobalValue(&global_x, &global_y, hand_x, hand_y);
 	HandObjectsArray.push_back(new bt_ARMM_hand(m_dynamicsWorld, m_collisionShapes, world_scale, global_x, global_y, sphere_resolution, ratio, center_trimesh.x(), center_trimesh.y()));
+	HandFingersArray.push_back(false);
 }
 
 void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float curr_hands_ratio, float* depth_grid)
@@ -1054,6 +1081,11 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 	CalcGlobalValue(&global_x, &global_y, hand_x, hand_y);
 	global_x = hand_x; global_y = hand_y;
 	HandObjectsArray.at(index)->Update(global_x, global_y, curr_hands_ratio, depth_grid);
+
+	REP(idx,fingersIdx.size())
+	{
+		HandFingersArray[fingersIdx[idx]]=true;
+	}
 
 
 	//check collision to kinematic box objects with hands
@@ -1065,7 +1097,11 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 				REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
 				{
 			      //衝突のチェック
-				  m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
+					if(HandFingersArray[i])
+					{
+		   			    //m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), pinchcallback);
+					}
+	   			    m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
 					//collision check with a texture soft body
 					if(textureSoftBody)
 					{
@@ -1089,6 +1125,7 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 
 			return;
 		}
+		HandFingersArray[i]=false;
 	}
 }
 
@@ -1125,7 +1162,7 @@ bool bt_ARMM_world::GetSphereRep( void ){
 //箱形状のオブジェクトの属性をキネマティック
 //（ふれても衝突判定のみで座標を動かさない)
 //物体に変更
-void bt_ARMM_world::ChangeAttribute(int pos, int index)
+void bt_ARMM_world::ChangeAttribute(int x, int y, int z, int index)
 {
 	if( index >= m_objectsBody.size())
 	{
@@ -1135,11 +1172,11 @@ void bt_ARMM_world::ChangeAttribute(int pos, int index)
 	}
 	btTransform trans;
 	m_objectsBody.at(index)->getMotionState()->getWorldTransform(trans);
-	trans.getOrigin().setX(pos);
+	trans.getOrigin().setX(x);
 	trans.getOrigin().setY(-5);
 	trans.getOrigin().setZ(2);
 	m_objectsBody.at(index)->getMotionState()->setWorldTransform(trans);
-	m_objectsBody.at(index)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
+	//m_objectsBody.at(index)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
 
 	return;
 }

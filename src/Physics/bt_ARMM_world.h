@@ -100,6 +100,7 @@ public:
 		std::vector<btRigidBody*> m_objectsBody;
 
 		std::vector<bt_ARMM_hand*> HandObjectsArray;
+		std::vector<bool> HandFingersArray;
 
 		btCollisionShape* groundShape;
 		btBvhTriangleMeshShape* trimeshShape;
@@ -178,7 +179,7 @@ public:
 		bool GetSphereRep( void );
 
 		//Function for kinematic box
-		void ChangeAttribute(int pos = 0, int index = 0);
+		void ChangeAttribute(int x=10, int y=-5, int z=2, int index = 0);
 		void ChangeRotation(double x, double y, double z);
 		virtual const btSoftRigidDynamicsWorld*	getSoftDynamicsWorld() const
 		{
