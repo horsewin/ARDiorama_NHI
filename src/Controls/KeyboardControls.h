@@ -119,7 +119,7 @@ public:
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(),0.005, world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				world->ChangeAttribute(25, -5, 40, index);
+				world->ChangeAttribute(25, -5, 5, index);
 								
 				return 79;
 			}
@@ -131,7 +131,7 @@ public:
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				world->ChangeAttribute(25, -5, 0, index);
+				world->ChangeAttribute(15, -5, 5, index);
 
 				return 80;
 			}

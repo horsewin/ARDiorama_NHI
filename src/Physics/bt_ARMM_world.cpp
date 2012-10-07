@@ -116,6 +116,7 @@ btVector3 btHandPos;
 btScalar _timeStep;
 
 osg::Vec3d softTexture_array[resX*resY];
+osg::Geometry* softGeom;
 
 std::ostream& operator<<(std::ostream& out, const btVector3 & v) {
 	return out << v.getX() << " " << v.getY() << " " << v.getZ() ;
@@ -216,6 +217,7 @@ struct PinchContactSensorCallback : public btDiscreteDynamicsWorld::ContactResul
 		const btCollisionObject* colObj0,int partId0,int index0,
 		const btCollisionObject* colObj1,int partId1,int index1)
 	{	
+		//cout << "Pinch interection" << endl;
 		//colObj0->setWorldTransform(colObj1->getWorldTransform());
 		return 0; // not actually sure if return value is used for anything...?
 	}
@@ -667,7 +669,9 @@ m_threadSupportCollision = new Win32ThreadSupport(Win32ThreadSupport::Win32Threa
 
 void bt_ARMM_world::Update() 
 {
-  DecideCollisionCondition();
+	SoftTextureUpdate();
+
+	DecideCollisionCondition();
 
 #ifdef SIM_MICROMACHINE
 
@@ -692,8 +696,7 @@ void bt_ARMM_world::Update()
 		}
 	}
 
-	if( objVectorDeletable.empty()){}
-	else
+	if( !objVectorDeletable.empty() )
 	{
 		for(int i= objVectorDeletable.size()-1; i>=0; i--){
 			vector<btRigidBody*>::iterator it			= m_objectsBody.begin() + objVectorDeletable[i];
@@ -711,6 +714,7 @@ void bt_ARMM_world::Update()
 
 	//start simulation
 	m_dynamicsWorld->stepSimulation(1/20.f,5); //60s
+
 	//m_dynamicsWorld->performDiscreteCollisionDetection();
 	m_worldInfo.m_sparsesdf.GarbageCollect();
 }
@@ -922,19 +926,19 @@ osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
 	const osg::Vec3 llCorner(pos);
     const osg::Vec3 uVec( 100.0, 0.0, 0.0 );
     const osg::Vec3 vVec( 0.0, 100.0, 0.0 ); // Must be at a slight angle for wind to catch it.
-    osg::Geometry* geom = osgwTools::makePlane( llCorner,
+    softGeom = osgwTools::makePlane( llCorner,
         uVec, vVec, osg::Vec2s( resX-1, resY-1 ) );
-    geode->addDrawable( geom );
+    geode->addDrawable( softGeom );
 
     // Set up for dynamic data buffer objects
-    geom->setDataVariance( osg::Object::DYNAMIC );
-    geom->setUseDisplayList( false );
-    geom->setUseVertexBufferObjects( true );
-    geom->getOrCreateVertexBufferObject()->setUsage( GL_DYNAMIC_DRAW );
+    softGeom->setDataVariance( osg::Object::DYNAMIC );
+    softGeom->setUseDisplayList( false );
+    softGeom->setUseVertexBufferObjects( true );
+    softGeom->getOrCreateVertexBufferObject()->setUsage( GL_DYNAMIC_DRAW );
 
     // Flag state: 2-sided lighting and a texture map.
     {
-        osg::StateSet* stateSet( geom->getOrCreateStateSet() );
+        osg::StateSet* stateSet( softGeom->getOrCreateStateSet() );
 
         osg::LightModel* lm( new osg::LightModel() );
         lm->setTwoSided( true );
@@ -989,9 +993,9 @@ osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
 
 	textureSoftBody->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
 
-    //geom->setUpdateCallback( new MeshUpdater( textureSoftBody, resX*resY ) );
 	this->getSoftDynamicsWorld()->addSoftBody(textureSoftBody);
-	geom->setUpdateCallback( new MeshUpdater( textureSoftBody, resX*resY));
+	//softGeom->setUpdateCallback( new MeshUpdater( textureSoftBody, resX*resY));
+
     return( geode.release() );
 }
 
@@ -1099,7 +1103,7 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 			      //衝突のチェック
 					if(HandFingersArray[i])
 					{
-		   			    //m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), pinchcallback);
+		   			    m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), pinchcallback);
 					}
 	   			    m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
 					//collision check with a texture soft body
@@ -1173,8 +1177,8 @@ void bt_ARMM_world::ChangeAttribute(int x, int y, int z, int index)
 	btTransform trans;
 	m_objectsBody.at(index)->getMotionState()->getWorldTransform(trans);
 	trans.getOrigin().setX(x);
-	trans.getOrigin().setY(-5);
-	trans.getOrigin().setZ(2);
+	trans.getOrigin().setY(y);
+	trans.getOrigin().setZ(z);
 	m_objectsBody.at(index)->getMotionState()->setWorldTransform(trans);
 	//m_objectsBody.at(index)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
 
@@ -1286,4 +1290,49 @@ void bt_ARMM_world::DecideCollisionCondition()
 	}	
 
 	changeCollisionObject = false;
+}
+
+void bt_ARMM_world::SoftTextureUpdate( void )
+{
+	if(textureSoftBody == 0 ) return;
+
+	const int _size = resX*resY;
+
+	//osg::Geometry* geom = softGeom;
+	//osg::Drawable* draw = dynamic_cast<osg::Drawable*>(geom);
+ //   osg::Vec3Array* verts( dynamic_cast< osg::Vec3Array* >( geom->getVertexArray() ) );
+
+ //   // Update the vertex array from the soft body node array.
+    btSoftBody::tNodeArray& nodes = textureSoftBody->m_nodes;
+    //osg::Vec3Array::iterator it( verts->begin() );
+
+	unsigned int idx = _size/2;		
+	static const btScalar	maxdrag=10;
+	btVector3 delta = (btHandPos*10 - nodes[idx].m_x);		
+	if(delta.length2()>(maxdrag*maxdrag))
+	{
+		delta=delta.normalized()*maxdrag;
+	}
+
+
+	//nodes[idx].m_v *= 0;
+	nodes[idx].m_v = (delta/_timeStep)*50;
+	//printf("nodes=(%f,%f,%f)\n",nodes[idx].m_x.getX(),nodes[idx].m_x.getY(),nodes[idx].m_x.getZ());
+
+	//nodes[idx].m_x.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
+	//goal.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
+
+	for( idx=0; idx<_size; idx++)
+    {
+		softTexture_array[idx] = osgbCollision::asOsgVec3( nodes[ idx ].m_x );
+        //*it++ = softTexture_array[idx];
+		//*it++ = osg::Vec3d(nodes[ idx ].m_x.getX(), nodes[ idx ].m_x.getY(), nodes[ idx ].m_x.getZ());
+    }
+//	verts->dirty();
+//    draw->dirtyBound();
+//
+//    // Generate new normals.
+//    osgUtil::SmoothingVisitor smooth;
+//    smooth.smooth( *geom );
+//    geom->getNormalArray()->dirty();
 }

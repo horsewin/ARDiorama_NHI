@@ -198,6 +198,7 @@ public:
 	private:
 		void CalcGlobalValue(float * global_x, float * global_y, const int & hand_x, const int & hand_y);
 	    void DecideCollisionCondition();
+		void SoftTextureUpdate( void );
 
 	private:
 		bool hasInit;

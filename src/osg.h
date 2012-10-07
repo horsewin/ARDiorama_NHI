@@ -60,6 +60,15 @@ void setOSGTrimeshScale(float scale)
 void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale);
 void osg_setHFNode(osg::Node* n);
 
+namespace
+{
+	template< class T>
+	bool VectorBoundChecker(std::vector<T> v, int idx)
+	{
+		return( v.size() > idx && idx >= 0);
+	}
+}
+
 class ARTrackedNode : public osg::Group {
 
 private:
@@ -753,7 +762,8 @@ void osg_createHand(int index, float x, float y, float world_scale, float ratio)
 void osg_UpdateHand(int index, float *x, float *y, float *grid) 
 {
 	const int DEPTH_SCALE = 10; // to convert cm to mm scale
-	//	hand_object_global_array.at(index)->setPosition(osg::Vec3d(x*SPHERE_SCALE, y*SPHERE_SCALE, 0));
+
+	if(!VectorBoundChecker(hand_object_global_array, index)) return;
 	hand_object_global_array.at(index)->setPosition(osg::Vec3d(0, 0, 0));
 
 	//REP(fingerTips,fingerIndex.size())
