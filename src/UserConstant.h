@@ -3,6 +3,12 @@
 
 #define SIM_MICROMACHINE 1
 #define CAR_SIMULATION 1
+#define USE_ARMM_VRPN 1
+#define USE_ARMM_SERVER_VIEW 1
+//#define USE_ARMM_VRPN_RECEIVER 1
+#define USE_SKIN_SEGMENTATION 1
+//#define USE_OPTICAL_FLOW 1 
+//#define USE_PARTICLES 1
 
 #define REP(i,n) for(int i=0;i<(int)n;++i)
 

@@ -465,8 +465,8 @@ bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation
 
 }
 
-void bt_ARMM_world::initPhysics() {
-
+void bt_ARMM_world::initPhysics() 
+{
 #ifdef USE_PARALLEL_DISPATCHER
 	m_threadSupportSolver = 0;
 	m_threadSupportCollision = 0;
@@ -803,7 +803,7 @@ void bt_ARMM_world::resetCarScene(int car_index)
 		Car_Array[car_index].gEngineForce = 0.f;
 
 		//m_carChassis->setCenterOfMassTransform(btTransform::getIdentity());
-		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5+100,-5,5)));
+		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5,-5,5)));
 		m_carChassis.at(car_index)->setLinearVelocity(btVector3(0,0,0));
 		m_carChassis.at(car_index)->setAngularVelocity(btVector3(0,0,0));
 		m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis.at(car_index)->getBroadphaseHandle(),m_dynamicsWorld->getDispatcher());
@@ -1298,13 +1298,14 @@ void bt_ARMM_world::SoftTextureUpdate( void )
 
 	const int _size = resX*resY;
 
-	//osg::Geometry* geom = softGeom;
-	//osg::Drawable* draw = dynamic_cast<osg::Drawable*>(geom);
- //   osg::Vec3Array* verts( dynamic_cast< osg::Vec3Array* >( geom->getVertexArray() ) );
-
- //   // Update the vertex array from the soft body node array.
+#ifdef USE_ARMM_SERVER_VIEW
+	osg::Geometry* geom = softGeom;
+	osg::Drawable* draw = dynamic_cast<osg::Drawable*>(geom);
+    osg::Vec3Array* verts( dynamic_cast< osg::Vec3Array* >( geom->getVertexArray() ) );
+    osg::Vec3Array::iterator it( verts->begin() );
+#endif
+    // Update the vertex array from the soft body node array.
     btSoftBody::tNodeArray& nodes = textureSoftBody->m_nodes;
-    //osg::Vec3Array::iterator it( verts->begin() );
 
 	unsigned int idx = _size/2;		
 	static const btScalar	maxdrag=10;
@@ -1314,25 +1315,26 @@ void bt_ARMM_world::SoftTextureUpdate( void )
 		delta=delta.normalized()*maxdrag;
 	}
 
+	nodes[idx].m_v = (delta/_timeStep)*50; //50 is masic number. you can adjust this value with your opnion
 
-	//nodes[idx].m_v *= 0;
-	nodes[idx].m_v = (delta/_timeStep)*50;
 	//printf("nodes=(%f,%f,%f)\n",nodes[idx].m_x.getX(),nodes[idx].m_x.getY(),nodes[idx].m_x.getZ());
-
 	//nodes[idx].m_x.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
 	//goal.setValue(btHandPos.x()*10, btHandPos.y()*10, btHandPos.z()*10);
 
 	for( idx=0; idx<_size; idx++)
     {
 		softTexture_array[idx] = osgbCollision::asOsgVec3( nodes[ idx ].m_x );
-        //*it++ = softTexture_array[idx];
-		//*it++ = osg::Vec3d(nodes[ idx ].m_x.getX(), nodes[ idx ].m_x.getY(), nodes[ idx ].m_x.getZ());
+#ifdef USE_ARMM_SERVER_VIEW
+        *it++ = softTexture_array[idx];
+#endif
     }
-//	verts->dirty();
-//    draw->dirtyBound();
-//
-//    // Generate new normals.
-//    osgUtil::SmoothingVisitor smooth;
-//    smooth.smooth( *geom );
-//    geom->getNormalArray()->dirty();
+#ifdef USE_ARMM_SERVER_VIEW
+	verts->dirty();
+    draw->dirtyBound();
+
+    // Generate new normals.
+    osgUtil::SmoothingVisitor smooth;
+    smooth.smooth( *geom );
+    geom->getNormalArray()->dirty();
+#endif
 }

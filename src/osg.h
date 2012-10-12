@@ -748,8 +748,7 @@ void osg_createHand(int index, float x, float y, float world_scale, float ratio)
 			hand_object_global_array.at(index)->addChild( hand_object_transform_array[index].at(curr));
 		}
 	}
-	//hand_object_global_array.at(index)->setPosition(osg::Vec3d(x*SPHERE_SCALE, y*SPHERE_SCALE, 0));
-	//hand_object_global_array.at(index)->setPosition(osg::Vec3d(x, y, 0));
+
 	hand_object_global_array.at(index)->setPosition(osg::Vec3d(0,0,0));
 	shadowedScene->addChild( hand_object_global_array.at(index) );
 

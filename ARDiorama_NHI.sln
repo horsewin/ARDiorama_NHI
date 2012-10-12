@@ -11,6 +11,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ClothSimulation", "..\Cloth
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Example collision", "..\osgBullet_02_00_00\build\examples\collision\collision.vcxproj", "{59BA3909-80C7-4E51-BC91-5DD72B35AA09}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ReconstructionMe", "..\ReconstructionMe\ReconstructionMe.vcxproj", "{6A446109-7688-46CF-9BED-E95D54D4010C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -85,6 +87,18 @@ Global
 		{59BA3909-80C7-4E51-BC91-5DD72B35AA09}.RelWithDebInfo|Win32.ActiveCfg = RelWithDebInfo|Win32
 		{59BA3909-80C7-4E51-BC91-5DD72B35AA09}.RelWithDebInfo|Win32.Build.0 = RelWithDebInfo|Win32
 		{59BA3909-80C7-4E51-BC91-5DD72B35AA09}.RelWithDebInfo|x64.ActiveCfg = RelWithDebInfo|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.Debug|Win32.Build.0 = Debug|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.Debug|x64.ActiveCfg = Debug|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.MinSizeRel|Win32.ActiveCfg = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.MinSizeRel|Win32.Build.0 = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.MinSizeRel|x64.ActiveCfg = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.Release|Win32.ActiveCfg = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.Release|Win32.Build.0 = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.Release|x64.ActiveCfg = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.RelWithDebInfo|Win32.ActiveCfg = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.RelWithDebInfo|Win32.Build.0 = Release|Win32
+		{6A446109-7688-46CF-9BED-E95D54D4010C}.RelWithDebInfo|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
