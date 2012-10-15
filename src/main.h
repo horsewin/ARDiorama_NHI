@@ -9,4 +9,5 @@ void registerMarker();
 void CreateOSGSphereProxy();
 void DeleteVirtualObject(const int & index);
 
+
 #endif

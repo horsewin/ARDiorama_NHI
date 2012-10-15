@@ -31,6 +31,7 @@
 
 #include "opencv/highgui.h"
 #include "osg_geom_data.h"
+#include "ARMM\Rendering\osg_Menu.h"
 
 #include "UserConstant.h"
 
@@ -59,6 +60,7 @@ void setOSGTrimeshScale(float scale)
 
 void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale);
 void osg_setHFNode(osg::Node* n);
+void OsgInitMenu( void );
 
 namespace
 {
@@ -69,7 +71,8 @@ namespace
 	}
 }
 
-class ARTrackedNode : public osg::Group {
+class ARTrackedNode : public osg::Group 
+{
 
 private:
 	OPIRALibrary::Registration *r;
@@ -181,6 +184,8 @@ public:
 };
 
 /*********************************************************/
+	ARMM::osg_Menu * osgMenu;
+
 	osg::Image* mVideoImage;
 	IplImage *mGLImage;
 	bool captureFrame();
@@ -583,63 +588,15 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 	//osg::Node * axis = createMilestone();
 	//axis->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 	//shadowedScene->addChild(axis);
-}
 
-/*osg_render for debuf gesture*/
-/*
-void osg_render(IplImage *newFrame, CvMat *cParams, CvMat *cDistort) {
-	cvResize(newFrame, mGLImage);
-	cvCvtColor(mGLImage, mGLImage, CV_BGR2RGB);
-	mVideoImage->setImage(mGLImage->width, mGLImage->height, 0, 3, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)mGLImage->imageData, osg::Image::NO_DELETE);
-
-	if (!viewer.done()) {
-		if (CAPTURE_SIZE.width != REGISTRATION_SIZE.width || CAPTURE_SIZE.height != REGISTRATION_SIZE.height) {
-			double scale = double(REGISTRATION_SIZE.width)/double(CAPTURE_SIZE.width);
-			IplImage *scaledImage = cvCreateImage(cvSize(newFrame->width*scale, newFrame->height*scale), newFrame->depth, newFrame->nChannels); cvResize(newFrame, scaledImage);
-			arTrackedNode->processFrame(scaledImage, cParams, cDistort);
-			cvReleaseImage(&scaledImage);
-		} else {
-			arTrackedNode->processFrame(newFrame, cParams, cDistort);
-		}
-		viewer.frame();
-	}
-}
-*/
-void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][4], osg::Vec3d wv[][4], CvMat *cParams, CvMat *cDistort) {
-	cvResize(newFrame, mGLImage);
-	cvCvtColor(mGLImage, mGLImage, CV_BGR2RGB);
-	mVideoImage->setImage(mGLImage->width, mGLImage->height, 0, 3, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)mGLImage->imageData, osg::Image::NO_DELETE);
-	//printf("1:%.2f  %.2f  %.2f \n", v.x(), v.y(), v.z());
-
-#if CAR_SIMULATION == 1
-	if(car_transform.at(0)) {
-		for(int i = 0; i < 2; i++) {
-			car_transform.at(i)->setAttitude(q[i]);
-			car_transform.at(i)->setPosition(v[i]);
-			for(int j = 0; j < 4; j++) {
-				wheel_transform[i].at(j)->setAttitude(wq[i][j]);
-				wheel_transform[i].at(j)->setPosition(wv[i][j]);
-			}
-		}
-	}
-#endif /* CAR_SIMULATION == 1 */
-
-#ifdef USE_ARMM_SERVER_VIEW
-	if (!viewer.done()) {
-		if (CAPTURE_SIZE.width != REGISTRATION_SIZE.width || CAPTURE_SIZE.height != REGISTRATION_SIZE.height) {
-			double scale = double(REGISTRATION_SIZE.width)/double(CAPTURE_SIZE.width);
-			IplImage *scaledImage = cvCreateImage(cvSize(newFrame->width*scale, newFrame->height*scale), newFrame->depth, newFrame->nChannels); cvResize(newFrame, scaledImage);
-			arTrackedNode->processFrame(scaledImage, cParams, cDistort);
-			cvReleaseImage(&scaledImage);
-		} else {
-			arTrackedNode->processFrame(newFrame, cParams, cDistort);
-		}
-		viewer.frame();
-	}
+	//Create OSG Menu
+#if USE_OSGMENU==1
+	osgMenu = new ARMM::osg_Menu();
+	OsgInitMenu();
 #endif
 }
 
-void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][4], osg::Vec3d wv[][4], CvMat *cParams, CvMat *cDistort, std::vector <osg::Quat> q_array,std::vector <osg::Vec3d>  v_array) 
+void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][4], osg::Vec3d wv[][4], CvMat *cParams, CvMat *cDistort, std::vector <osg::Quat> q_array, std::vector<osg::Vec3d>  v_array) 
 {
 	cvResize(newFrame, mGLImage);
 	cvCvtColor(mGLImage, mGLImage, CV_BGR2RGB);
@@ -657,20 +614,30 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 			}
 		}
 	}
-	for(unsigned int i = 0; i < q_array.size(); i++) {
-		obj_transform_array.at(i)->setAttitude(q_array.at(i));
-		obj_transform_array.at(i)->setPosition(v_array.at(i));
-	}
 #endif /* CAR_SIMULATION == 1 */
 
+	//update the position of each virtual object
+	for(unsigned int i = 0; i < q_array.size(); i++) 
+	{
+		obj_transform_array.at(i)->setAttitude(q_array.at(i));
+		obj_transform_array.at(i)->setPosition(v_array.at(i));
+		osg::Vec3 pos = obj_transform_array.at(i)->getPosition();
+		printf("%d,%s:%.2f  %.2f  %.2f \n", i, obj_node_array.at(i)->getName().c_str(), v_array.at(i).x(), v_array.at(i).y(), v_array.at(i).z());
+		printf("POS=(%.2f, %.2f, %.2f)\n",pos.x(), pos.y(), pos.z());
+	}
+
 #ifdef USE_ARMM_SERVER_VIEW
-	if (!viewer.done()) {
-		if (CAPTURE_SIZE.width != REGISTRATION_SIZE.width || CAPTURE_SIZE.height != REGISTRATION_SIZE.height) {
+	if (!viewer.done()) 
+	{
+		if (CAPTURE_SIZE.width != REGISTRATION_SIZE.width || CAPTURE_SIZE.height != REGISTRATION_SIZE.height) 
+		{
 			double scale = double(REGISTRATION_SIZE.width)/double(CAPTURE_SIZE.width);
 			IplImage *scaledImage = cvCreateImage(cvSize(newFrame->width*scale, newFrame->height*scale), newFrame->depth, newFrame->nChannels); cvResize(newFrame, scaledImage);
 			arTrackedNode->processFrame(scaledImage, cParams, cDistort);
 			cvReleaseImage(&scaledImage);
-		} else {
+		} 
+		else 
+		{
 			arTrackedNode->processFrame(newFrame, cParams, cDistort);
 		}
 		viewer.frame();
@@ -701,9 +668,10 @@ void osg_UpdateHeightfieldTrimesh(float *ground_grid) {
 
 void osgAddObjectNode(osg::Node* n) 
 {
+	int index = obj_node_array.size();
+
 	obj_node_array.push_back(n);
 	obj_transform_array.push_back(new osg::PositionAttitudeTransform());
-	int index = obj_node_array.size()-1;
 	obj_transform_array.at(index)->setAttitude(osg::Quat(
 		osg::DegreesToRadians(50.f), osg::Vec3d(1.0, 0.0, 0.0),
 		osg::DegreesToRadians(-50.f), osg::Vec3d(0.0, 1.0, 0.0),
@@ -717,7 +685,7 @@ void osgAddObjectNode(osg::Node* n)
 	obj_transform_array.at(index)->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
 	shadowedScene->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
 
-	printf("Object number: %d added \n", index+1);
+	printf("Object number: %d added \n", index);
 	std::cout << obj_transform_array.at(index)->getAttitude() << endl;
 }
 
@@ -834,6 +802,37 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 	}
 }
 
+void OsgInitMenu()
+{
+	osgMenu->CreateMenuPane();
+
+	std::vector<osg::PositionAttitudeTransform*> pTransArray = 
+		osgMenu->getObjMenuTransformArray();
+
+	//add menu object into the AR scene
+	osg::ref_ptr<osg::Group> menu = new osg::Group;
+	REP(idx, pTransArray.size())
+	{
+		pTransArray.at(idx)->setNodeMask(castShadowMask );
+		menu->addChild(pTransArray.at(idx));
+	}
+
+	osg::ref_ptr<osg::PositionAttitudeTransform> menuTrans = 
+		new osg::PositionAttitudeTransform;
+	const osg::Vec3d pos(250, -200, 10);
+	const osg::Quat attitude = osg::Quat(
+			osg::DegreesToRadians(-90.f), osg::Vec3d(1.0, 0.0, 0.0),
+			osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 1.0, 0.0),
+			osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 0.0, 1.0)
+	);
+	menuTrans->setAttitude(attitude);
+	menuTrans->setPosition(pos);
+	menuTrans->addChild(menu.get());
+
+	shadowedScene->addChild(menuTrans.get());
+
+	osgMenu->setObjMenuTransformArray(pTransArray);
+}
 
 #ifdef SIM_PARTICLES
 void osgAddWorldSphereProxyNode(osg::Node* n) {

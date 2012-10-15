@@ -60,6 +60,12 @@
     <ClCompile Include="src\Network\Communicator.cpp">
       <Filter>Network</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\Dropbox\Lab\ShareProc\ARMM\Rendering\osg_Menu.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Dropbox\Lab\ShareProc\constant.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\main.h">
@@ -108,6 +114,12 @@
       <Filter>Network</Filter>
     </ClInclude>
     <ClInclude Include="src\UserConstant.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Dropbox\Lab\ShareProc\include\ARMM\Rendering\osg_Menu.h">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\Dropbox\Lab\ShareProc\include\constant.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -145,7 +145,7 @@ struct ContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCall
 		touch = true;
 		// collision frequency is set to at least 3.0 sec upward
 		//if(true){
-		if( time_spent > 0.3)
+		if( time_spent > 0.1)
 		{
 
 			switch(interact_state)
@@ -1012,9 +1012,9 @@ btConvexHullShape* bt_ARMM_world::get_Convex_Shape(int index) {
 	return Convex_Shape.at(index);
 }
 
-btTransform bt_ARMM_world::get_Object_Transform(int index) {
+btTransform bt_ARMM_world::get_Object_Transform(int index) 
+{
 	btTransform trans;
-	m_objectsBody.at(index)->setRestitution(RESTITUTION);
 	m_objectsBody.at(index)->getMotionState()->getWorldTransform(trans);
 	return trans;
 }
@@ -1162,10 +1162,6 @@ bool bt_ARMM_world::GetSphereRep( void ){
 	return m_sphere_rep;
 }
 
-
-//箱形状のオブジェクトの属性をキネマティック
-//（ふれても衝突判定のみで座標を動かさない)
-//物体に変更
 void bt_ARMM_world::ChangeAttribute(int x, int y, int z, int index)
 {
 	if( index >= m_objectsBody.size())
@@ -1180,7 +1176,9 @@ void bt_ARMM_world::ChangeAttribute(int x, int y, int z, int index)
 	trans.getOrigin().setY(y);
 	trans.getOrigin().setZ(z);
 	m_objectsBody.at(index)->getMotionState()->setWorldTransform(trans);
-	//m_objectsBody.at(index)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
+	m_objectsBody.at(index)->setCollisionFlags(btCollisionObject::CF_KINEMATIC_OBJECT);
+
+	printf("Changed Object %d attributes to Kinematics\n", index);
 
 	return;
 }

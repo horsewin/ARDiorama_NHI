@@ -1,7 +1,7 @@
 #ifndef KEYBOARD_CONTROLS_H
 #define KEYBOARD_CONTROLS_H
 
-#include "./Controls.h"
+#include "Controls.h"
 #include "src\UserConstant.h"
 
 //OpenCV
@@ -117,7 +117,7 @@ public:
 				string modelname(DATABASEDIR);
 				modelname+="ItimatsuCow/ItimatsuCow.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
-				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(),0.005, world->get_Object_Transform(index)));
+				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), 0.005, world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
 				world->ChangeAttribute(25, -5, 5, index);
 								

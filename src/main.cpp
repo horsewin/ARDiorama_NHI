@@ -503,9 +503,13 @@ void RenderScene(IplImage *arImage, Capture *capture)
 	}
 #endif /* CAR_SIMULATION == 1 */
 
+	std::vector <osg::Quat> quat_obj_array;
+	std::vector <osg::Vec3d> vect_obj_array;
+
 	if(Virtual_Objects_Count > 0) 
 	{
-		if(!objVectorDeletable.empty()){
+		if(!objVectorDeletable.empty())
+		{
 			for(int i= objVectorDeletable.size()-1; i>=0; i--)
 			{	
 				DeleteVirtualObject(objVectorDeletable[i]);
@@ -522,19 +526,6 @@ void RenderScene(IplImage *arImage, Capture *capture)
 			osgAddObjectNode(m_world->CreateSoftTexture("Data/tex.bmp"));
 			cout << "create the soft body object" << endl;
 		}
-		//if( collide[0] >= 1 && collide[1] >= 1)
-		//{
-		//  DeleteVirtualObject(0);
-		//  collide[0] = 0;
-		//  collide[1] = 0;
-		//  kc->check_input(80);
-		//}
-
-		std::vector <osg::Quat> quat_obj_array;
-		std::vector <osg::Vec3d> vect_obj_array;
-
-		quat_obj_array.clear();
-		vect_obj_array.clear();
 
 		for(int i = 0; i < Virtual_Objects_Count; i++) 
 		{
@@ -542,7 +533,6 @@ void RenderScene(IplImage *arImage, Capture *capture)
 			btQuaternion quat2 = trans2.getRotation();
 			quat_obj_array.push_back(osg::Quat(quat2.getX(), quat2.getY(), quat2.getZ(), quat2.getW())); 
 			vect_obj_array.push_back(osg::Vec3d(trans2.getOrigin().getX()*scale, trans2.getOrigin().getY()*scale,trans2.getOrigin().getZ()*scale));		
-			//vect_obj_array.push_back( osgbCollision::asOsgVec3(trans2.getOrigin()));		
 
 			////for debug for collision
 			//if(collisionInd >= 444){
@@ -560,12 +550,12 @@ void RenderScene(IplImage *arImage, Capture *capture)
 #endif /* CAR_SIMULATION == 1 */
 	} 
 
-	else // if(Virtual_Objects_Count > 0) 
+	else // Virtual_Objects_Count <= 0
 	{
 #if CAR_SIMULATION == 1
-		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion());
-#else
-		osg_render(arImage, NULL, NULL, NULL, NULL, RegistrationParams, capture->getDistortion());
+		osg_render(arImage, CarsOrientation, CarsPosition, WheelsOrientaion, WheelsPosition, RegistrationParams, capture->getDistortion(), quat_obj_array, vect_obj_array);
+#else 
+		osg_render(arImage, NULL, NULL, NULL, NULL, RegistrationParams, capture->getDistortion(), quat_obj_array, vect_obj_array);
 #endif /* CAR_SIMULATION == 1 */
 	}
 }
@@ -592,7 +582,9 @@ bool loadKinectParams(char *filename, CvMat **params, CvMat **distortion)
 void loadKinectTransform(char *filename) 
 {
 	CvFileStorage* fs = cvOpenFileStorage( filename, 0, CV_STORAGE_READ );
-	if (fs!=0) {
+
+	if (fs !=0 ) 
+	{
 		CvSeq *s = cvGetFileNodeByName(fs, 0, "MarkerSize")->data.seq;
 		markerSize.width = cvReadInt((CvFileNode*)cvGetSeqElem(s, 0));
 		markerSize.height = cvReadInt((CvFileNode*)cvGetSeqElem(s, 1));
@@ -609,7 +601,8 @@ void loadKinectTransform(char *filename)
 		kinectTransform = (CvMat*)cvRead( fs, fileparams );
 		cvReleaseFileStorage( &fs );
 
-		if (niContext.WaitAnyUpdateAll() == XN_STATUS_OK) {
+		if (niContext.WaitAnyUpdateAll() == XN_STATUS_OK) 
+		{
 			//Load in the marker for registration
 			osg_inittracker(MARKER_FILENAME, 400, markerSize.width);
 
@@ -788,6 +781,8 @@ void registerMarker()
 	{
 		//Load in the marker for registration
 		osg_inittracker(MARKER_FILENAME, 400, markerSize.width);	
+
+		//Set OSG Menu
 
 		//Recreat world and controls
 		delete kc;

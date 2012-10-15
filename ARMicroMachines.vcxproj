@@ -120,7 +120,7 @@
     <ClCompile>
       <Optimization>MaxSpeed</Optimization>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <AdditionalIncludeDirectories>$(LIB3DS)\src;$(OPENCV_2_1)\include\opencv;$(OPENCV_2_1)\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET_INCLUDE_DIR);$(OSGBULLET_INCLUDE_DIR);$(OSGWORKS_INCLUDE_DIR);$(ARMM)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(LIB3DS)\src;$(OPENCV_2_1)\include\opencv;$(OPENCV_2_1)\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET_INCLUDE_DIR);$(OSGBULLET_INCLUDE_DIR);$(OSGWORKS_INCLUDE_DIR);$(ARMM);$(ARMM_NHI_SHARED_INC_DIR)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <WarningLevel>Level3</WarningLevel>
@@ -157,6 +157,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\Dropbox\Lab\ShareProc\ARMM\Rendering\osg_Menu.cpp" />
+    <ClCompile Include="..\..\..\Dropbox\Lab\ShareProc\constant.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\MyShadowMap.cpp" />
     <ClCompile Include="src\Network\Communicator.cpp" />
@@ -167,6 +169,8 @@
     <ClCompile Include="src\ViewingModel.cc" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\Dropbox\Lab\ShareProc\include\ARMM\Rendering\osg_Menu.h" />
+    <ClInclude Include="..\..\..\Dropbox\Lab\ShareProc\include\constant.h" />
     <ClInclude Include="src\main.h" />
     <ClInclude Include="src\MyShadowMap.h" />
     <ClInclude Include="src\Network\Communicator.h" />
