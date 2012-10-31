@@ -89,12 +89,12 @@ public:
 		light = new osg::Light();
 		light->setLightNum(0);
 		light->setAmbient(osg::Vec4(0.4f,0.4f,0.4f,1.0f));
-		light->setDiffuse(osg::Vec4(0.8f,0.8,0.8f,1.0f));
+		light->setDiffuse(osg::Vec4(1.0f, 1.0f, 1.0f, 1.0f));
 		light->setSpecular(osg::Vec4(0.4f,0.4f,0.4f,1.0f));
-		//light->setConstantAttenuation(0.2f);
-		//light->setLinearAttenuation(0.05f);
-		//light->setQuadraticAttenuation(0.05f);
-		light->setPosition(osg::Vec4(15, -5, 20, 0.0));
+		light->setConstantAttenuation(0.2f);
+		light->setLinearAttenuation(0.05f);
+		light->setQuadraticAttenuation(0.05f);
+		light->setPosition(osg::Vec4(30, -5, 5, 0.0));
 
 		osg::LightSource* lightSource = new osg::LightSource;	
 		lightSource->setLight(light);
@@ -103,7 +103,6 @@ public:
 		lightGroup->addChild(lightSource);
 	
 		this->addChild(lightGroup);
-
 	}
 
 	osg::Light *getLight() {
@@ -228,7 +227,7 @@ public:
 	CvPoint2D32f osg_carSize;
 	osgViewer::Viewer viewer;
 
-
+	int arInputButton = -1;
 
 /** create quad at specified position. */
 osg::Drawable* createSquare(const osg::Vec3& corner,const osg::Vec3& width,const osg::Vec3& height, osg::Image* image=NULL)
@@ -504,9 +503,9 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 	shadowedScene->getOrCreateStateSet()->setMode(GL_DEPTH_TEST, osg::StateAttribute::ON); //Adrian  
 
 	osg::ref_ptr<osg::LightSource> source = new osg::LightSource; //V
-	source->getLight()->setPosition( osg::Vec4(4.0, 4.0, 10.0, 0.0) ); //V
-	source->getLight()->setAmbient( osg::Vec4(0.2, 0.2, 0.2, 1.0) ); //V
-	source->getLight()->setDiffuse( osg::Vec4(0.8, 0.8, 0.8, 1.0) ); //V
+	source->getLight()->setPosition( osg::Vec4(4.0, 8.0, 10.0, 0.0) ); //V
+	source->getLight()->setAmbient( osg::Vec4(0.1, 0.1, 0.1, 1.0) ); //V
+	source->getLight()->setDiffuse( osg::Vec4(0.9, 0.9, 0.9, 1.0) ); //V
 	shadowedScene->addChild(source);
 
 #if CAR_SIMULATION == 1
@@ -601,7 +600,6 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 	cvResize(newFrame, mGLImage);
 	cvCvtColor(mGLImage, mGLImage, CV_BGR2RGB);
 	mVideoImage->setImage(mGLImage->width, mGLImage->height, 0, 3, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)mGLImage->imageData, osg::Image::NO_DELETE);
-	//printf("1:%.2f  %.2f  %.2f \n", v.x(), v.y(), v.z());
 
 #if CAR_SIMULATION == 1
 	if(car_transform.at(0)) {
@@ -622,8 +620,8 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 		obj_transform_array.at(i)->setAttitude(q_array.at(i));
 		obj_transform_array.at(i)->setPosition(v_array.at(i));
 		osg::Vec3 pos = obj_transform_array.at(i)->getPosition();
-		printf("%d,%s:%.2f  %.2f  %.2f \n", i, obj_node_array.at(i)->getName().c_str(), v_array.at(i).x(), v_array.at(i).y(), v_array.at(i).z());
-		printf("POS=(%.2f, %.2f, %.2f)\n",pos.x(), pos.y(), pos.z());
+		//printf("%d,%s:%.2f  %.2f  %.2f \n", i, obj_node_array.at(i)->getName().c_str(), v_array.at(i).x(), v_array.at(i).y(), v_array.at(i).z());
+		//printf("POS=(%.2f, %.2f, %.2f)\n",pos.x(), pos.y(), pos.z());
 	}
 
 #ifdef USE_ARMM_SERVER_VIEW
@@ -645,12 +643,14 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 #endif
 }
 
-void osg_uninit() {
+void osg_uninit() 
+{
 	arTrackedNode->stop();
 	cvReleaseImage(&mGLImage);
 }
 
-void osg_UpdateHeightfieldTrimesh(float *ground_grid) {
+void osg_UpdateHeightfieldTrimesh(float *ground_grid)
+{
 	int index =0;
 	for(int i = 0; i < NUM_VERTS_X-1; i++) {
 		for(int j = 0; j < NUM_VERTS_Y-1; j++) {
@@ -731,12 +731,6 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 	const int DEPTH_SCALE = 10; // to convert cm to mm scale
 
 	if(!VectorBoundChecker(hand_object_global_array, index)) return;
-	hand_object_global_array.at(index)->setPosition(osg::Vec3d(0, 0, 0));
-
-	//REP(fingerTips,fingerIndex.size())
-	//{
-	//	cout << fingerIndex.at(fingerTips) << " ";
-	//}
 
 	//‘–¸•ûŒü‚ÍKinect view‚©‚ç‚Ý‚½‚Æ‚«‚Ìtop-left‚©‚çtop-right‚ÉŒü‚©‚¤
 	for(int i = 0; i < MIN_HAND_PIX; i++) 
@@ -755,7 +749,7 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 			}
 			else
 			{
-				hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(x[curr]*SPHERE_SCALE, y[curr]*SPHERE_SCALE, 5000*DEPTH_SCALE));
+				hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(x[curr]*SPHERE_SCALE, y[curr]*SPHERE_SCALE, -5000*DEPTH_SCALE));
 				//hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(pos.x(), pos.y(), 100*SPHERE_SCALE));
 //				if(voxel[index] < 0)
 //					world_sphere_transform_array.at(index)->setStateSet(
@@ -800,6 +794,7 @@ void osg_UpdateHand(int index, float *x, float *y, float *grid)
 			}while(shift<=2);
 		}
 	}
+
 }
 
 void OsgInitMenu()
@@ -817,16 +812,16 @@ void OsgInitMenu()
 		menu->addChild(pTransArray.at(idx));
 	}
 
-	osg::ref_ptr<osg::PositionAttitudeTransform> menuTrans = 
-		new osg::PositionAttitudeTransform;
-	const osg::Vec3d pos(250, -200, 10);
-	const osg::Quat attitude = osg::Quat(
-			osg::DegreesToRadians(-90.f), osg::Vec3d(1.0, 0.0, 0.0),
+	osg::ref_ptr<osg::PositionAttitudeTransform> menuTrans = new osg::PositionAttitudeTransform;
+	const osg::Vec3d BASEPOSITION(0,0,0);
+	const osg::Quat BASEATTITUDE = osg::Quat(
+			osg::DegreesToRadians(0.f), osg::Vec3d(1.0, 0.0, 0.0),
 			osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 1.0, 0.0),
 			osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 0.0, 1.0)
 	);
-	menuTrans->setAttitude(attitude);
-	menuTrans->setPosition(pos);
+
+	menuTrans->setAttitude(BASEATTITUDE);
+	menuTrans->setPosition(BASEPOSITION);
 	menuTrans->addChild(menu.get());
 
 	shadowedScene->addChild(menuTrans.get());
@@ -835,7 +830,8 @@ void OsgInitMenu()
 }
 
 #ifdef SIM_PARTICLES
-void osgAddWorldSphereProxyNode(osg::Node* n) {
+void osgAddWorldSphereProxyNode(osg::Node* n)
+{
 		world_sphere_array.push_back(n);
 		world_sphere_transform_array.push_back(new osg::PositionAttitudeTransform());
 		int index = world_sphere_array.size()-1;

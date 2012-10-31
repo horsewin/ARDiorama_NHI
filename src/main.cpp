@@ -1,3 +1,5 @@
+//TODO オブジェクトロスト後の処理がおかしいので修正の必要あり
+
 #define UPDATE_TRIMESH 1
 #define SIM_FREQUENCY 10
 #define SHOWSEGMENTATION
@@ -90,6 +92,8 @@ void DetectFingertips(cv::Ptr<IplImage> handMask, vector< vector<cv::Point> > & 
 int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) ;
 void UpdateAllHands();
 int Find_Num_Hand_Pixel(float depth);
+void AssignPhysics2Osgmenu();
+
 double cal_mean();
 double cal_std(double mean);
 
@@ -338,6 +342,10 @@ int main(int argc, char* argv[])
 	flow_capture->Init();
 #endif
 
+#if USE_OSGMENU == 1
+	AssignPhysics2Osgmenu();
+#endif
+
 /////////////////////////////////////////////Main Loop////////////////////////////////////////////////
 	while (running) 
 	{
@@ -414,6 +422,12 @@ int main(int argc, char* argv[])
 //XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 #endif
 				counter++;
+			}
+
+			if(arInputButton > 0)
+			{
+				cout << osgMenu->getObjMenuNodeArray().at(arInputButton)->getName().c_str() << endl;
+				arInputButton = -1;
 			}
 			//do hand pose recognition
 			//TickCountAverageBegin();
@@ -965,7 +979,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	}
 	#endif
 
-	IplImage* col_640 = cvCreateImage(cvSize(320, 240), IPL_DEPTH_8U, 3);
+	IplImage* col_640 = cvCreateImage(cvSize(SKIN_X, SKIN_Y), IPL_DEPTH_8U, 3);
 	cvResize(colourIm160, col_640, CV_INTER_LINEAR);
 	//for(int i = 0; i < num_hand_in_scene; i++) {
 	//	cvCircle(col_640,cvPoint(curr_hands_corners[i].x, 160 - curr_hands_corners[i].y),5,cvScalar(0,255,255));
@@ -1012,7 +1026,9 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 					fingerIndex.push_back( dx*MIN_HAND_PIX + (MIN_HAND_PIX-1)-dy);
 				}
 			}
-			//cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
+#ifdef SHOWSEGMENTATION
+			cvCircle(col_640, fingerTips[i][j] , 10, cv::Scalar(255,255,0), 4);
+#endif
 		}
 	}
 	//printf("Upper=(%d,%d) Bottom=(%d,%d)\n",upperLeft.x, upperLeft.y, bottomRight.x, bottomRight.y);
@@ -1021,7 +1037,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	//<--(FINGERTIPS DETECTION) end
 	//TickCountAverageEnd();
 #ifdef SHOWSEGMENTATION
-	//cvShowImage("Op_Flow_640",col_640);
+//	cvShowImage("Op_Flow_640",col_640);
 	//cvShowImage("transcolor",transColor320);
 #endif
 
@@ -1203,4 +1219,9 @@ void DeleteVirtualObject(const int & index)
 	obj_node_array.erase(it2);
 	Virtual_Objects_Count--;
 	cout << index << "'s virtual objects LOST : Remain " << Virtual_Objects_Count << endl;
+}
+
+void AssignPhysics2Osgmenu()
+{
+	m_world->CreateMenu(osgMenu);
 }

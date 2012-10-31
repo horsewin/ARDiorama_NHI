@@ -9,6 +9,7 @@
 
 extern int collide_counter;
 extern double prev_collide_clock;
+extern interaction interact_state;
 
 const char * DATABASEDIR = "../../../Dropbox/Lab/ModelDatabase/";
 
@@ -108,9 +109,7 @@ public:
 				return 66;
 			}
 			if (getKey(77)) { //M
-				//world->ChangeAttribute();
-				y += 0.1;
-				world->ChangeRotation(x,y,z);
+				//interact_state = PINCH;
 				return 77;
 			}
 			if (getKey(79)) { //o
@@ -126,7 +125,7 @@ public:
 
 			if (getKey(80)) { //p
 				string modelname(DATABASEDIR);
-				modelname+="WoodTable/WoodTable.3ds";
+				modelname+="keyboard/keyboard.3ds";
 				//string modelname = "HatuneMiku.3ds";
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));

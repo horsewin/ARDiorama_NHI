@@ -17,7 +17,7 @@
 	const int NUMBER_CAR = 2;
 	const int NUM_WHEEL = 4;
 #else
-	const int NUMBER_CAR = 0;
+	const int NUMBER_C	AR = 0;
 	const int NUM_WHEEL = 0;
 #endif
 
@@ -39,8 +39,8 @@ const float SPHERE_SIZE = 2;
 const float CUBE_SIZE = 4;
 //#define TRACKING_SIZE cvSize(160,120)
 
-const int		SKIN_X = 320;
-const int		SKIN_Y = 240;
+const int		SKIN_X = 640;
+const int		SKIN_Y = 480;
 const float MIN_HAND_PIX = 21; // 11 pixels
 const int		HAND_GRID_SIZE = 441;// 15x15
 const int		HAND_SIZE = HAND_GRID_SIZE;

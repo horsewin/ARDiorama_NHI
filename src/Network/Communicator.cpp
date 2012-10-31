@@ -289,12 +289,12 @@ void ARMM_Communicator::HandMessagePacking( void )
 	}
 }
 
-void ARMM_Communicator::SetObjectsData(std::vector<btRigidBody*> * obj)
+void ARMM_Communicator::SetObjectsData(std::vector< boost::shared_ptr<btRigidBody> > * obj)
 {
 	m_objects_body = obj;
 }
 
-void ARMM_Communicator::SetHandsData(std::vector<bt_ARMM_hand*> * hand)
+void ARMM_Communicator::SetHandsData(std::vector< boost::shared_ptr<bt_ARMM_hand>> * hand)
 {
 	m_hands_body = hand;
 }

@@ -23,11 +23,15 @@
 #include <osg/MatrixTransform>
 #include <osg/PositionAttitudeTransform>
 #include <osg/io_utils>
+
 //Bullet
 #include <btBulletDynamicsCommon.h>
+
+//Boost Library
+#include <boost\shared_ptr.hpp>
+
 //User definition
 #include "../UserConstant.h"
-
 #include "../Physics/bt_ARMM_hand.h"
 
 enum datatype{REGULAR, SOFTBODY};
@@ -61,8 +65,8 @@ public:
 	virtual ~ARMM_Communicator();
 	virtual void mainloop();
 
-	virtual void SetObjectsData(std::vector<btRigidBody*> * obj);
-	virtual void SetHandsData(std::vector<bt_ARMM_hand*> * hand);
+	virtual void SetObjectsData(std::vector< boost::shared_ptr<btRigidBody> > * obj);
+	virtual void SetHandsData(std::vector< boost::shared_ptr<bt_ARMM_hand>> * hand);
 
 protected:
 	virtual int register_types( void );
@@ -82,8 +86,8 @@ protected:
 		vrpn_float32 softT[resX*resY][3];
 
 		//for getting bullet coordinate
-		std::vector<btRigidBody*> * m_objects_body;
-		std::vector<bt_ARMM_hand*>* m_hands_body;
+		std::vector< boost::shared_ptr<btRigidBody> > * m_objects_body;
+		std::vector< boost::shared_ptr<bt_ARMM_hand> >* m_hands_body;
 
 		//	float* HeightfieldData;
 

@@ -95,8 +95,8 @@ const int SHAPE_SPHERE = 8;
 //---------------------------------------------------------------------------
 // Global
 //---------------------------------------------------------------------------
-int collide_counter = 0;
-double prev_collide_clock = 0.0;
+int collide_counter = 0, panel_counter = 0;
+double prev_collide_clock = 0.0, prev_panel_clock = .0;
 extern int Virtual_Objects_Count;
 extern vector<int> objVectorDeletable;
 extern vector<int> fingersIdx;
@@ -109,6 +109,9 @@ interaction interact_state = INIT;
 bool	touch; //(true)touch  (false)not touch
 
 btCollisionObject * actualCollisionObject = NULL; //for collision detection
+btCollisionObject * actualPanelObject = NULL;
+int actualID = -1;
+
 int collisionInd = -1;
 bool changeCollisionObject = false; //手と物体の間の衝突判定で手のほうを受け取らないようにするためのもの
 
@@ -118,7 +121,11 @@ btScalar _timeStep;
 osg::Vec3d softTexture_array[resX*resY];
 osg::Geometry* softGeom;
 
-std::ostream& operator<<(std::ostream& out, const btVector3 & v) {
+bool panelCollisionLock = false;
+extern int arInputButton;
+
+std::ostream& operator<<(std::ostream& out, const btVector3 & v) 
+{
 	return out << v.getX() << " " << v.getY() << " " << v.getZ() ;
 }
 
@@ -224,6 +231,60 @@ struct PinchContactSensorCallback : public btDiscreteDynamicsWorld::ContactResul
 };
 /** create Collision Callback **/
 
+/** Create Collision Callback abouttouching the panel**/
+struct PanelContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCallback
+{	
+	//! Constructor, pass whatever context you want to have available when processing contacts
+	/*! You may also want to set m_collisionFilterGroup and m_collisionFilterMask
+	 *  (supplied by the superclass) for needsCollision() */
+	PanelContactSensorCallback()
+		: btDiscreteDynamicsWorld::ContactResultCallback()
+	{}
+	
+	//! Called with each contact for your own processing (e.g. test if contacts fall in within sensor parameters)
+	//! indexはよくわからない値が入っていた
+	//! partIdは両方とも0が入ってることがほとんどだった
+	virtual btScalar addSingleResult(btManifoldPoint& cp,
+		const btCollisionObject* colObj0,int partId0,int index0,
+		const btCollisionObject* colObj1,int partId1,int index1)
+	{	
+
+		double current_clock = static_cast<double>(cv::getTickCount());
+		double time_spent = ( current_clock - prev_panel_clock ) / cv::getTickFrequency();
+
+		panelCollisionLock = true;
+
+		prev_panel_clock = current_clock;
+
+		//なぜかstaticオブジェクトの判定が
+		//colObj0 と colObj1で逆転していた
+		if(colObj0->isStaticObject())
+		{
+			//TODO const_castを使わない方法
+			// 現在衝突しているオブジェクトのポインタを保存
+			actualPanelObject = const_cast<btCollisionObject * >(colObj1);
+			cout << "ID=" <<  actualPanelObject->getFriction() << endl;
+
+			//temporary ID variable
+			actualID = static_cast<int>(actualPanelObject->getFriction());
+		}
+		else if(colObj1->isStaticObject())
+		{
+			actualPanelObject = const_cast<btCollisionObject * >(colObj0);
+			cout << "ID=" <<  actualPanelObject->getFriction() << endl;
+
+			//temporary ID variable
+			actualID = static_cast<int>(actualPanelObject->getFriction());
+		}
+		else
+		{
+			cout << "No static object with panel interaction" << endl;
+		}
+
+		return 0; // not actually sure if return value is used for anything...?
+	}
+};
+
 struct MeshUpdater : public osg::Drawable::UpdateCallback
 {
     MeshUpdater(  btSoftBody* softBody, const unsigned int size )
@@ -291,6 +352,7 @@ btVector3 worldMin(-1000,-1000,-1000);
 btVector3 worldMax(1000,1000,1000);
 ContactSensorCallback callback;
 PinchContactSensorCallback pinchcallback;
+PanelContactSensorCallback panelcallback;
 
 namespace{
 	double GetMaxNumber(const double & x, const double & y, const double & z){
@@ -427,17 +489,14 @@ bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation
 		for (int j=0;j<m_collisionShapes.size();j++) delete m_collisionShapes[j];
 		m_collisionShapes.clear();
 
-//		for (int j=0;j<Convex_Shape.size();j++) delete Convex_Shape[j];
 		Convex_Shape.clear();
-//		for (int j=0;j<m_objectsBody.size();j++)	delete m_objectsBody[j];
 		m_objectsBody.clear();
+		HandObjectsArray.clear();
+		HandFingersArray.clear();
 
 		delete m_indexVertexArrays;
 		delete m_vertices;
 		delete m_dynamicsWorld;
-		for (unsigned int i = 0; i < HandObjectsArray.size(); i++) {
-			delete HandObjectsArray.at(i);
-		}
 #ifdef SIM_MICROMACHINE
 		for (int i = 0; i < 2; i++) {
 			delete m_vehicleRayCaster.at(i);
@@ -672,6 +731,7 @@ void bt_ARMM_world::Update()
 	SoftTextureUpdate();
 
 	DecideCollisionCondition();
+	DecideCollisionPanel();
 
 #ifdef SIM_MICROMACHINE
 
@@ -699,7 +759,8 @@ void bt_ARMM_world::Update()
 	if( !objVectorDeletable.empty() )
 	{
 		for(int i= objVectorDeletable.size()-1; i>=0; i--){
-			vector<btRigidBody*>::iterator it			= m_objectsBody.begin() + objVectorDeletable[i];
+			vector< boost::shared_ptr<btRigidBody> >::iterator it
+				= m_objectsBody.begin() + objVectorDeletable[i];
 			vector<btDefaultMotionState*>::iterator it2 = ObjectsMotionState.begin() + objVectorDeletable[i];
 
 			//for out of arrays
@@ -856,17 +917,19 @@ int bt_ARMM_world::create_Sphere()
 
 	int index = ObjectsMotionState.size()-1;
 	btRigidBody::btRigidBodyConstructionInfo Sphere_Body_CI(sphereMass,ObjectsMotionState.at(index),Sphere_Shape,localInertia);
-	m_objectsBody.push_back(new btRigidBody(Sphere_Body_CI));
+	boost::shared_ptr<btRigidBody> tmpRigid = boost::shared_ptr<btRigidBody>(new btRigidBody(Sphere_Body_CI));
+	m_objectsBody.push_back(tmpRigid);
 
-	m_dynamicsWorld->addRigidBody(m_objectsBody.at(index));
+	m_dynamicsWorld->addRigidBody(m_objectsBody.at(index).get());
 
-	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20,-5,10)));
+	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20,-5,30)));
 	m_objectsBody.at(index)->setFriction(FRICTION);
 	m_objectsBody.at(index)->setRestitution(RESTITUTION);
 	return index;
 }
 
-int bt_ARMM_world::create_Box() {
+int bt_ARMM_world::create_Box()
+{
 	float boxMass = 50;
 //	Convex_Shape.push_back(new btConvexHullShape());//place holder
 //	int shape_index = Convex_Shape.size()-1;
@@ -879,8 +942,11 @@ int bt_ARMM_world::create_Box() {
 
 	int index = ObjectsMotionState.size()-1;
 	btRigidBody::btRigidBodyConstructionInfo Box_Body_CI(boxMass,ObjectsMotionState.at(index),Box_Shape,localInertia);
-	m_objectsBody.push_back(new btRigidBody(Box_Body_CI));
-	m_dynamicsWorld->addRigidBody(m_objectsBody.at(index));
+
+	boost::shared_ptr<btRigidBody> tmpRigid = boost::shared_ptr<btRigidBody>(new btRigidBody(Box_Body_CI));
+	m_objectsBody.push_back(tmpRigid);
+
+	m_dynamicsWorld->addRigidBody(m_objectsBody.at(index).get());
 
 	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(30,-5,0)));
 	m_objectsBody.at(index)->setFriction(FRICTION);
@@ -902,20 +968,65 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 	osg::ref_ptr<osg::Node> sample = osgDB::readNodeFile(modelname.c_str());
 
 	//create bounding box
-	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(10,0,0)));  //ここをいじる
-	btRigidBody* btObject = new btRigidBody(50, state, NULL);
+	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));  //ここをいじる
+	boost::shared_ptr<btRigidBody> btObject = boost::shared_ptr<btRigidBody>(new btRigidBody(50, state, NULL));
 	btObject->setCollisionShape( osgbCollision::btTriMeshCollisionShapeFromOSG(sample.get() ) );
 	btObject->setCollisionFlags( btCollisionObject::CF_KINEMATIC_OBJECT );
 
 	m_objectsBody.push_back(btObject);
-	m_dynamicsWorld->addRigidBody(btObject);
+	m_dynamicsWorld->addRigidBody(btObject.get());
 
 	int index = m_objectsBody.size() - 1;
-	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(5,-5,0)));
+	m_objectsBody.at(index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));
 	m_objectsBody.at(index)->setFriction(FRICTION);
 	m_objectsBody.at(index)->setRestitution(RESTITUTION);
 
 	return index;
+}
+
+void bt_ARMM_world::CreateMenu(ARMM::osg_Menu* osgMenu)
+{
+	std::vector<osg::Node*> pObjMenuNodeArray;
+	std::vector<osg::PositionAttitudeTransform*> pObjMenuTransformArray;
+
+	//set object mass
+	float boxMass = 5;
+
+	//set the info of rendered objects
+	pObjMenuNodeArray		= osgMenu->getObjMenuNodeArray();
+	pObjMenuTransformArray	= osgMenu->getObjMenuTransformArray();
+
+	//all menu nodes are registered in bullet dynamics world
+	mMenuIndexOffset = m_dynamicsWorld->getCollisionObjectArray().size()-1;
+	REP(i,pObjMenuNodeArray.size())
+	{
+		int index = mMenuBody.size();
+
+		osg::ref_ptr<osg::Node> sample = pObjMenuNodeArray.at(i);
+
+		//create bounding box
+		const float scale = 10.0;
+		osg::Vec3 pos = pObjMenuTransformArray.at(i)->getPosition();
+		osg::Vec4 att = pObjMenuTransformArray.at(i)->getAttitude().asVec4();
+
+		//printf("Pos=(%f,%f,%f)\n",pos.x(), pos.y(), pos.z());
+		btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));
+		boost::shared_ptr<btRigidBody> btObject		= boost::shared_ptr<btRigidBody>(new btRigidBody(boxMass, state, NULL));
+		btObject->setCollisionShape( osgbCollision::btTriMeshCollisionShapeFromOSG(sample.get() ) );
+		btObject->setCollisionFlags( btCollisionObject::CF_STATIC_OBJECT ); //because a menu button do not need to move
+
+		//register it to dynamics world
+		mMenuBody.push_back(btObject);
+		m_dynamicsWorld->addRigidBody(btObject.get());
+
+		//set attribute of this object
+		btVector4 v4 = osgbCollision::asBtVector4(att);
+		btQuaternion quat(v4.x(), v4.y(), v4.z(), v4.w());
+		mMenuBody.at(index)->setCenterOfMassTransform(btTransform(quat, btVector3(pos.x()/scale, pos.y()/scale, pos.z()/scale)));
+
+		//temporary ID variable
+		mMenuBody.at(index)->setFriction(index);
+	}
 }
 
 osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
@@ -982,8 +1093,8 @@ osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
 	textureSoftBody->m_cfg.collisions |= btSoftBody::fCollision::SDF_RS; // for collision BUT no operation;;
 	textureSoftBody->m_cfg.collisions |= btSoftBody::fCollision::VF_SS;
 	textureSoftBody->m_cfg.aeromodel = btSoftBody::eAeroModel::V_TwoSided;
-    textureSoftBody->setWindVelocity( btVector3( 0., 0., 0. ) );
-    textureSoftBody->setTotalMass( 10 );
+    textureSoftBody->setWindVelocity( btVector3( 0., 0., -9.8 ) );
+    textureSoftBody->setTotalMass( 100 );
 	//textureSoftBody->get
 	////体積保存の係数
 	//textureSoftBody->m_cfg.kVC = 0.5;
@@ -1075,7 +1186,9 @@ void bt_ARMM_world::createHand(int hand_x, int hand_y, int sphere_resolution, fl
 {
 	float global_x, global_y;
 	CalcGlobalValue(&global_x, &global_y, hand_x, hand_y);
-	HandObjectsArray.push_back(new bt_ARMM_hand(m_dynamicsWorld, m_collisionShapes, world_scale, global_x, global_y, sphere_resolution, ratio, center_trimesh.x(), center_trimesh.y()));
+
+	boost::shared_ptr<bt_ARMM_hand> tmpHand = boost::shared_ptr<bt_ARMM_hand>(new bt_ARMM_hand(m_dynamicsWorld, m_collisionShapes, world_scale, global_x, global_y, sphere_resolution, ratio, center_trimesh.x(), center_trimesh.y()));
+	HandObjectsArray.push_back(tmpHand);
 	HandFingersArray.push_back(false);
 }
 
@@ -1093,29 +1206,55 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 
 
 	//check collision to kinematic box objects with hands
-	REP(obj, m_objectsBody.size()){
-		//if( m_objectsBody.at(obj)->getCollisionShape()->getShapeType() == SHAPE_BOX)
+	REP(obj, m_objectsBody.size())
+	{
+		if( m_objectsBody.at(obj)->isKinematicObject() )
 		{
-			if( m_objectsBody.at(obj)->isKinematicObject() )
+			REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
 			{
-				REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
+				//衝突のチェック
+				if(HandFingersArray[i])
 				{
-			      //衝突のチェック
-					if(HandFingersArray[i])
-					{
-		   			    m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), pinchcallback);
-					}
-	   			    m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
-					//collision check with a texture soft body
-					if(textureSoftBody)
-					{
-						//衝突のチェック
-						m_dynamicsWorld->contactPairTest(HandObjectsArray.at(index)->handSphereRigidBody.at(i), textureSoftBody, callback);
-					}
+					//between a finger-tip and a virtual object
+		   			m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj).get(), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
+
+
+				}
+	   			//m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
+				//collision check with a texture soft body
+				if(textureSoftBody)
+				{
+					//衝突のチェック
+					m_dynamicsWorld->contactPairTest(HandObjectsArray.at(index)->handSphereRigidBody.at(i), textureSoftBody, pinchcallback);
 				}
 			}
 		}
 	}
+
+	//check collision between finger-tips and menu buttons
+	if(!panelCollisionLock)
+	{
+		for(int obj=1;obj<mMenuBody.size();obj++)
+		{
+			REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
+			{
+				//衝突のチェック
+				if(HandFingersArray[i])
+				{
+					//between a finger-tip and a menu button
+					m_dynamicsWorld->contactPairTest(mMenuBody.at(obj).get(), HandObjectsArray.at(index).get()->handSphereRigidBody.at(i), panelcallback);
+
+					if(panelCollisionLock) break;
+				}
+			}
+			if(panelCollisionLock)
+			{
+				cout << "Press button" << endl;
+				break;		
+			}
+		}
+	}
+
 
 	REP(i,MIN_HAND_PIX*MIN_HAND_PIX)
 	{
@@ -1217,6 +1356,7 @@ void bt_ARMM_world::DecideCollisionCondition()
 			if( i < REGULAROBJECTNUM)
 			{
 				changeCollisionObject = true;
+				//printf("ChangeCollisionObject is TRUE\n");
 				return;
 			}
 
@@ -1288,6 +1428,23 @@ void bt_ARMM_world::DecideCollisionCondition()
 	}	
 
 	changeCollisionObject = false;
+}
+
+void bt_ARMM_world::DecideCollisionPanel()
+{
+	//set touch value to false if no collision continues for 2 sec
+	double current_clock = static_cast<double>(cv::getTickCount());
+	double time_spent = ( current_clock - prev_collide_clock ) / cv::getTickFrequency();
+
+	int collisionSize = mMenuBody.size();
+	for(int i=1; i<collisionSize; i++)
+	{
+		if( static_cast<int>(mMenuBody.at(i)->getFriction()) == actualID)
+		{
+			arInputButton = actualID;
+			actualID = -1;
+		}
+	}
 }
 
 void bt_ARMM_world::SoftTextureUpdate( void )

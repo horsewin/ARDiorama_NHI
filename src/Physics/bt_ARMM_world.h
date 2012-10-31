@@ -34,7 +34,11 @@ class btDefaultCollisionConfiguration;
 #include <vector>
 #include <string>
 
+//Boost Library
+#include <boost\shared_ptr.hpp>
+
 #include "../UserConstant.h"
+#include "ARMM\Rendering\osg_Menu.h"
 
 #define FRICTION 1.0f
 #define RESTITUTION 0.0
@@ -43,6 +47,7 @@ class btDefaultCollisionConfiguration;
 const int NUM_VERTS_X = 160;
 const int NUM_VERTS_Y = 120;
 const int NUM_CAR = 2;
+
 
 struct Car{
 	float	chassis_width;
@@ -97,22 +102,26 @@ public:
 		btBoxShape* Box_Shape;
 		btSphereShape* Sphere_Shape;
 		std::vector<btConvexHullShape*> Convex_Shape;
-		std::vector<btRigidBody*> m_objectsBody;
 
-		std::vector<bt_ARMM_hand*> HandObjectsArray;
-		std::vector<bool> HandFingersArray;
-
+		//virtual objects with physics
+		std::vector< boost::shared_ptr<btRigidBody> >	m_objectsBody;
+		std::vector< boost::shared_ptr<bt_ARMM_hand>>	HandObjectsArray;
+		std::vector<bool>			HandFingersArray;
+		std::vector< boost::shared_ptr<btRigidBody> >	mMenuBody;
+		int mMenuIndexOffset;
+		
+		//virtual terrain with physics
 		btCollisionShape* groundShape;
 		btBvhTriangleMeshShape* trimeshShape;
 
 		btVector3*	m_vertices;
 
-		std::vector<btDefaultMotionState*> chassisMotionState;
-		std::vector<btRigidBody*> m_carChassis;
+		std::vector<btDefaultMotionState*>	chassisMotionState;
+		std::vector<btRigidBody*>			m_carChassis;
 		btRaycastVehicle::btVehicleTuning	m_tuning[NUM_CAR];
 		std::vector<btVehicleRaycaster*>	m_vehicleRayCaster;
-		std::vector<btRaycastVehicle*>	m_vehicle;
-		std::vector<btCollisionShape*>	m_wheelShape;
+		std::vector<btRaycastVehicle*>		m_vehicle;
+		std::vector<btCollisionShape*>		m_wheelShape;
 
 		btClock m_clock;
 
@@ -153,6 +162,7 @@ public:
 		int create_Sphere();
 		int create_Box();
 		int create_3dsmodel(std::string modelname);
+		void CreateMenu(ARMM::osg_Menu* osgMenu);
 		osg::Node* CreateSoftTexture(std::string texturename);
 
 		double get3dsScale();
@@ -198,6 +208,7 @@ public:
 	private:
 		void CalcGlobalValue(float * global_x, float * global_y, const int & hand_x, const int & hand_y);
 	    void DecideCollisionCondition();
+	    void DecideCollisionPanel();
 		void SoftTextureUpdate( void );
 
 	private:
