@@ -60,7 +60,13 @@ void setOSGTrimeshScale(float scale)
 
 void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale);
 void osg_setHFNode(osg::Node* n);
-void OsgInitMenu( void );
+void OsgInitMenu();
+void OsgInitModelMenu();
+void ToggleMenuVisibility();
+void ToggleModelButtonVisibility();
+bool IsMenuVisibiilty();
+bool IsModelButtonVisibiilty();
+void ModelButtonAnimation();
 
 namespace
 {
@@ -190,7 +196,11 @@ public:
 	bool captureFrame();
 	osg::ref_ptr<ARTrackedNode> arTrackedNode; 
 	osg::ref_ptr<osg::Node> HFNode;
+
+	//for virtual objects
 	std::vector<osg::ref_ptr<osg::Node>> obj_node_array;
+	std::vector<osg::PositionAttitudeTransform*> obj_transform_array;
+
 
 	std::vector<osg::ref_ptr<osg::Node>> hand_object_array;
 #ifdef SIM_PARTICLES
@@ -206,7 +216,8 @@ public:
 
 	//Shadowing Stuff
 	osg::ref_ptr<osgShadow::ShadowedScene> shadowedScene;
-	unsigned int rcvShadowMask = 0x1;
+	unsigned int invisibleMask  = 0x0;
+	unsigned int rcvShadowMask  = 0x1;
 	unsigned int castShadowMask = 0x2;
 
 	int celicaIndex;
@@ -214,7 +225,6 @@ public:
 	std::vector<osg::PositionAttitudeTransform*> car_transform;
 	std::vector<osg::PositionAttitudeTransform*> wheel_transform[NUMBER_CAR];
 #endif /* CAR_SIMULATION == 1 */
-	std::vector<osg::PositionAttitudeTransform*> obj_transform_array;
 
 	std::vector<osg::PositionAttitudeTransform*> hand_object_global_array;
 	std::vector<osg::PositionAttitudeTransform*> hand_object_transform_array[MAX_NUM_HANDS];
@@ -227,7 +237,10 @@ public:
 	CvPoint2D32f osg_carSize;
 	osgViewer::Viewer viewer;
 
-	int arInputButton = -1;
+	int osgArInputButton = -1;
+	int osgArAddModelIndex = -1;
+	static bool bAddArModel = false;
+	double gAddModelAnimation = 0;
 
 /** create quad at specified position. */
 osg::Drawable* createSquare(const osg::Vec3& corner,const osg::Vec3& width,const osg::Vec3& height, osg::Image* image=NULL)
@@ -396,7 +409,6 @@ void osg_init(double *projMatrix)
 	arTrackedNode = new ARTrackedNode();
 	fgCamera->addChild(arTrackedNode);
 };
-
 
 void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale) 
 {
@@ -592,11 +604,17 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 #if USE_OSGMENU==1
 	osgMenu = new ARMM::osg_Menu();
 	OsgInitMenu();
+	OsgInitModelMenu();
 #endif
 }
 
 void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][4], osg::Vec3d wv[][4], CvMat *cParams, CvMat *cDistort, std::vector <osg::Quat> q_array, std::vector<osg::Vec3d>  v_array) 
 {
+	if(gAddModelAnimation >0.001 || gAddModelAnimation < -0.001)
+	{
+		ModelButtonAnimation();
+	}
+
 	cvResize(newFrame, mGLImage);
 	cvCvtColor(mGLImage, mGLImage, CV_BGR2RGB);
 	mVideoImage->setImage(mGLImage->width, mGLImage->height, 0, 3, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)mGLImage->imageData, osg::Image::NO_DELETE);
@@ -641,6 +659,13 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 		viewer.frame();
 	}
 #endif
+
+	//change the condition of regular state if lists of models is shown in AR space into invisible condition
+	if( !bAddArModel && IsModelButtonVisibiilty())
+	{
+		cout << "button state -- " << IsModelButtonVisibiilty() << endl;
+		ToggleModelButtonVisibility();
+	}
 }
 
 void osg_uninit() 
@@ -801,14 +826,14 @@ void OsgInitMenu()
 {
 	osgMenu->CreateMenuPane();
 
-	std::vector<osg::PositionAttitudeTransform*> pTransArray = 
+	std::vector<osg::ref_ptr<osg::PositionAttitudeTransform> > pTransArray = 
 		osgMenu->getObjMenuTransformArray();
 
 	//add menu object into the AR scene
 	osg::ref_ptr<osg::Group> menu = new osg::Group;
 	REP(idx, pTransArray.size())
 	{
-		pTransArray.at(idx)->setNodeMask(castShadowMask );
+		pTransArray.at(idx)->setNodeMask(castShadowMask);
 		menu->addChild(pTransArray.at(idx));
 	}
 
@@ -829,43 +854,131 @@ void OsgInitMenu()
 	osgMenu->setObjMenuTransformArray(pTransArray);
 }
 
-#ifdef SIM_PARTICLES
-void osgAddWorldSphereProxyNode(osg::Node* n)
+void OsgInitModelMenu()
 {
-		world_sphere_array.push_back(n);
-		world_sphere_transform_array.push_back(new osg::PositionAttitudeTransform());
-		int index = world_sphere_array.size()-1;
-		world_sphere_transform_array.at(index)->setAttitude(osg::Quat(
+	osgMenu->CreateModelButtonCloud();
+
+	std::vector< osg::ref_ptr<osg::PositionAttitudeTransform> > pTransArray = osgMenu->getMenuModelTransArray();
+	//add menu object into the AR scene
+	osg::ref_ptr<osg::Group> menu = new osg::Group;
+	REP(idx, pTransArray.size())
+	{
+		pTransArray.at(idx)->setNodeMask(castShadowMask);
+		menu->addChild(pTransArray.at(idx));
+	}
+
+	osg::ref_ptr<osg::PositionAttitudeTransform> menuTrans = new osg::PositionAttitudeTransform;
+	const osg::Vec3d BASEPOSITION(0,0,0);
+	const osg::Quat BASEATTITUDE = osg::Quat(
 			osg::DegreesToRadians(0.f), osg::Vec3d(1.0, 0.0, 0.0),
 			osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 1.0, 0.0),
 			osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 0.0, 1.0)
-			));
-		world_sphere_transform_array.at(index)->setPosition(osg::Vec3d(0.0, 0.0, 0.0));
-		//world_sphere_transform_array.at(index)->setNodeMask(castShadowMask );
-		//world_sphere_transform_array.at(index)->setNodeMask(rcvShadowMask );
-		world_sphere_transform_array.at(index)->addChild(world_sphere_array.at(index));
-		shadowedScene->addChild( world_sphere_transform_array.at(index) );
-		world_sphere_transform_array.at(index)->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
-		shadowedScene->getOrCreateStateSet()->setRenderBinDetails(1, "RenderBin");
-		//printf("Object number: %d added \n", index);
+	);
+	menuTrans->setAttitude(BASEATTITUDE);
+	menuTrans->setPosition(BASEPOSITION);
+	menuTrans->addChild(menu.get());
+
+	shadowedScene->addChild(menuTrans.get());
+
+	osgMenu->setMenuModelTransArray(pTransArray);
 }
 
-void osgUpdateWorldSphereTransform(float *voxel) {
-	for(int i = 0; i < 30; i++) {
-		for(int j = 0; j < 40; j++) {
-			int index = i*40 + j;
-			if(voxel[index] > 0) {
-				osg::Vec3d pos = world_sphere_transform_array.at(index)->getPosition();
-				world_sphere_transform_array.at(index)->setPosition(osg::Vec3d(pos.x(), pos.y(), voxel[index]));
-			}
-//			if(voxel[index] < 0)
-//				world_sphere_transform_array.at(index)->setStateSet(
-//			else
-//				s->setAllChildrenOn();
+void ModelButtonInput()
+{
+	//rendering list of models
+	//rendering new button for cancal action
+	ToggleModelButtonVisibility();
+	bAddArModel = true;
+
+	//disappearing all buttons temporary
+	ToggleMenuVisibility();
+
+	//add menu object into the AR scene
+	
+	
+}
+
+void ToggleMenuVisibility()
+{
+	std::vector< osg::ref_ptr<osg::PositionAttitudeTransform> > pMenuTransArray  = osgMenu->getObjMenuTransformArray();
+
+	double shiftVal = 4;
+	REP(idx, pMenuTransArray.size())
+	{
+		if(pMenuTransArray.at(idx)->getNodeMask() == castShadowMask)
+		{
+			pMenuTransArray.at(idx)->setNodeMask(invisibleMask);
+
+			//appear ar model buttons
+			gAddModelAnimation = shiftVal;
+		}
+		else
+		{
+			pMenuTransArray.at(idx)->setNodeMask(castShadowMask);
+
+			//disappear ar model buttons
+			gAddModelAnimation = -1*shiftVal;
 		}
 	}
 
+	cout << gAddModelAnimation << endl;
+
+	osgMenu->setObjMenuTransformArray(pMenuTransArray);
+	osgMenu->ToggleMenuButtonState();
 }
-#endif
+
+void ToggleModelButtonVisibility()
+{
+	std::vector< osg::ref_ptr<osg::PositionAttitudeTransform> > pModelTransArray = osgMenu->getMenuModelTransArray();
+
+	if(pModelTransArray.empty()) return;
+
+	unsigned int nodeMask = pModelTransArray.at(0)->getNodeMask() == castShadowMask?
+		invisibleMask : castShadowMask;
+
+	REP(idx, pModelTransArray.size())
+	{
+		pModelTransArray.at(idx)->setNodeMask(nodeMask);
+	}
+
+	osgMenu->setMenuModelTransArray(pModelTransArray);
+	osgMenu->ToggleModelButtonState();
+}
+
+bool IsMenuVisibiilty()
+{
+	return osgMenu->isMenuButtonState();
+}
+
+bool IsModelButtonVisibiilty()
+{
+	return osgMenu->isModelButtonState();
+}
+
+void ModelButtonAnimation()
+{
+	std::vector< osg::ref_ptr<osg::PositionAttitudeTransform> > pModelTransArray = osgMenu->getMenuModelTransArray();
+
+	if(pModelTransArray.empty())
+	{
+		cerr << "No model button is found in osg.h" << endl;
+		return;
+	}
+	double posZ = pModelTransArray.at(0)->getPosition().z();
+	const double zThreshold = 2.0;
+	if(posZ > zThreshold)
+	{
+		gAddModelAnimation = 0;
+		return;
+	}
+	cout << "PosZ = " << posZ << endl;
+	REP(idx, pModelTransArray.size())
+	{
+		osg::Vec3 newPos = pModelTransArray.at(idx)->getPosition();
+		newPos.set(newPos.x(), newPos.y(), newPos.z() + gAddModelAnimation);
+		pModelTransArray.at(idx)->setPosition(newPos);		
+	}
+
+}
 
 #endif

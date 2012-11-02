@@ -111,6 +111,7 @@ bool	touch; //(true)touch  (false)not touch
 btCollisionObject * actualCollisionObject = NULL; //for collision detection
 btCollisionObject * actualPanelObject = NULL;
 int actualID = -1;
+int selectID = -1;
 
 int collisionInd = -1;
 bool changeCollisionObject = false; //手と物体の間の衝突判定で手のほうを受け取らないようにするためのもの
@@ -121,8 +122,12 @@ btScalar _timeStep;
 osg::Vec3d softTexture_array[resX*resY];
 osg::Geometry* softGeom;
 
-bool panelCollisionLock = false;
-extern int arInputButton;
+extern bool panelCollisionLock;
+extern panelinput panelInput;
+
+bool bSelectModel = false;
+extern int osgArInputButton;
+extern int osgArAddModelIndex;
 
 std::ostream& operator<<(std::ostream& out, const btVector3 & v) 
 {
@@ -263,7 +268,6 @@ struct PanelContactSensorCallback : public btDiscreteDynamicsWorld::ContactResul
 			//TODO const_castを使わない方法
 			// 現在衝突しているオブジェクトのポインタを保存
 			actualPanelObject = const_cast<btCollisionObject * >(colObj1);
-			cout << "ID=" <<  actualPanelObject->getFriction() << endl;
 
 			//temporary ID variable
 			actualID = static_cast<int>(actualPanelObject->getFriction());
@@ -271,10 +275,49 @@ struct PanelContactSensorCallback : public btDiscreteDynamicsWorld::ContactResul
 		else if(colObj1->isStaticObject())
 		{
 			actualPanelObject = const_cast<btCollisionObject * >(colObj0);
-			cout << "ID=" <<  actualPanelObject->getFriction() << endl;
 
 			//temporary ID variable
 			actualID = static_cast<int>(actualPanelObject->getFriction());
+		}
+		else
+		{
+			cout << "No static object with panel interaction" << endl;
+		}
+
+		return 0; // not actually sure if return value is used for anything...?
+	}
+};
+
+/** Create Collision Callback abouttouching the panel**/
+struct SelectContactSensorCallback : public btDiscreteDynamicsWorld::ContactResultCallback
+{	
+	//! Constructor, pass whatever context you want to have available when processing contacts
+	/*! You may also want to set m_collisionFilterGroup and m_collisionFilterMask
+	 *  (supplied by the superclass) for needsCollision() */
+	SelectContactSensorCallback()
+		: btDiscreteDynamicsWorld::ContactResultCallback()
+	{}
+	
+	//! Called with each contact for your own processing (e.g. test if contacts fall in within sensor parameters)
+	//! indexはよくわからない値が入っていた
+	//! partIdは両方とも0が入ってることがほとんどだった
+	virtual btScalar addSingleResult(btManifoldPoint& cp,
+		const btCollisionObject* colObj0,int partId0,int index0,
+		const btCollisionObject* colObj1,int partId1,int index1)
+	{	
+		bSelectModel= true;
+
+		//なぜかstaticオブジェクトの判定が
+		//colObj0 と colObj1で逆転していた
+		if(colObj0->isStaticObject())
+		{
+			//temporary ID variable
+			selectID = static_cast<int>(colObj1->getFriction());
+		}
+		else if(colObj1->isStaticObject())
+		{
+			//temporary ID variable
+			selectID = static_cast<int>(colObj0->getFriction());
 		}
 		else
 		{
@@ -353,6 +396,7 @@ btVector3 worldMax(1000,1000,1000);
 ContactSensorCallback callback;
 PinchContactSensorCallback pinchcallback;
 PanelContactSensorCallback panelcallback;
+SelectContactSensorCallback selectcallback;
 
 namespace{
 	double GetMaxNumber(const double & x, const double & y, const double & z){
@@ -732,6 +776,7 @@ void bt_ARMM_world::Update()
 
 	DecideCollisionCondition();
 	DecideCollisionPanel();
+	DecideCollisionModelButton();
 
 #ifdef SIM_MICROMACHINE
 
@@ -986,8 +1031,8 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 
 void bt_ARMM_world::CreateMenu(ARMM::osg_Menu* osgMenu)
 {
-	std::vector<osg::Node*> pObjMenuNodeArray;
-	std::vector<osg::PositionAttitudeTransform*> pObjMenuTransformArray;
+	std::vector<osg::ref_ptr<osg::Node> > pObjMenuNodeArray;
+	std::vector<osg::ref_ptr<osg::PositionAttitudeTransform> > pObjMenuTransformArray;
 
 	//set object mass
 	float boxMass = 5;
@@ -1029,6 +1074,51 @@ void bt_ARMM_world::CreateMenu(ARMM::osg_Menu* osgMenu)
 	}
 }
 
+void bt_ARMM_world::CreateModelButton(ARMM::osg_Menu* osgMenu)
+{
+	std::vector<osg::ref_ptr<osg::Node> > pObjModelButtonNodeArray;
+	std::vector<osg::ref_ptr<osg::PositionAttitudeTransform> > pModelButtonTransformArray;
+
+	//set object mass
+	float boxMass = 5;
+
+	//set the info of rendered objects
+	pObjModelButtonNodeArray	= osgMenu->getMenuModelObjectArray();
+	pModelButtonTransformArray	= osgMenu->getMenuModelTransArray();
+
+	//all menu nodes are registered in bullet dynamics world
+	mModelButtonIndexOffset = m_dynamicsWorld->getCollisionObjectArray().size()-1;
+	REP(i,pObjModelButtonNodeArray.size())
+	{
+		int index = mModelButton.size();
+
+		osg::ref_ptr<osg::Node> sample = pObjModelButtonNodeArray.at(i);
+
+		//create bounding box
+		const float scale = 10.0;
+		osg::Vec3 pos = pModelButtonTransformArray.at(i)->getPosition();
+		osg::Vec4 att = pModelButtonTransformArray.at(i)->getAttitude().asVec4();
+
+		//printf("Pos=(%f,%f,%f)\n",pos.x(), pos.y(), pos.z());
+		btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));
+		boost::shared_ptr<btRigidBody> btObject		= boost::shared_ptr<btRigidBody>(new btRigidBody(boxMass, state, NULL));
+		btObject->setCollisionShape( osgbCollision::btTriMeshCollisionShapeFromOSG(sample.get() ) );
+		btObject->setCollisionFlags( btCollisionObject::CF_STATIC_OBJECT ); //because a menu button do not need to move
+
+		//register it to dynamics world
+		mModelButton.push_back(btObject);
+		m_dynamicsWorld->addRigidBody(btObject.get());
+
+		//set attribute of this object
+		btVector4 v4 = osgbCollision::asBtVector4(att);
+		btQuaternion quat(v4.x(), v4.y(), v4.z(), v4.w());
+		mModelButton.at(index)->setCenterOfMassTransform(btTransform(quat, btVector3(pos.x()/scale, pos.y()/scale, 5))); //TODO デプス値を固定値にしない
+
+		printf("%d BulletPos(%lf,%lf,0)\n",i, pos.x()/scale, pos.y()/scale);
+		//temporary ID variable
+		mModelButton.at(index)->setFriction(index);
+	}
+}
 osg::Node* bt_ARMM_world::CreateSoftTexture(string texturename)
 {
 	osg::Vec3d pos =  osgbCollision::asOsgVec3(btHandPos*10);
@@ -1255,6 +1345,28 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 		}
 	}
 
+	if(panelCollisionLock && panelInput == ADDARMODEL && selectID == -1)
+	{
+		for(int obj=0;obj<mModelButton.size();obj++)
+		{
+			REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
+			{
+				//衝突のチェック
+				if(HandFingersArray[i])
+				{
+					//between a finger-tip and a menu button
+					m_dynamicsWorld->contactPairTest(mModelButton.at(obj).get(), HandObjectsArray.at(index).get()->handSphereRigidBody.at(i), selectcallback);
+
+					if(bSelectModel) break;
+				}
+			}
+			if(bSelectModel)
+			{
+				cout << "Select a virtual model done by contactPairTest" << endl;
+				break;		
+			}
+		}
+	}
 
 	REP(i,MIN_HAND_PIX*MIN_HAND_PIX)
 	{
@@ -1273,7 +1385,8 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 }
 
 //Bad only need one transformation and grid to update all the height
-btTransform bt_ARMM_world::getHandTransform(int index) {
+btTransform bt_ARMM_world::getHandTransform(int index)
+{
 	btTransform trans = HandObjectsArray.at(index)->getHandSphereTransform();
 	return trans;
 }
@@ -1297,7 +1410,8 @@ bool bt_ARMM_world::ToggleSphereRep( void ){
 	return m_sphere_rep;
 }
 
-bool bt_ARMM_world::GetSphereRep( void ){
+bool bt_ARMM_world::GetSphereRep( void )
+{
 	return m_sphere_rep;
 }
 
@@ -1441,8 +1555,23 @@ void bt_ARMM_world::DecideCollisionPanel()
 	{
 		if( static_cast<int>(mMenuBody.at(i)->getFriction()) == actualID)
 		{
-			arInputButton = actualID;
+			osgArInputButton = actualID;
 			actualID = -1;
+		}
+	}
+}
+
+void bt_ARMM_world::DecideCollisionModelButton()
+{
+	int collisionSize = mModelButton.size();
+	for(int i=1; i<collisionSize; i++)
+	{
+		if( static_cast<int>(mModelButton.at(i)->getFriction()) == selectID)
+		{
+			cout << "Select object done!! " << selectID << endl;
+			osgArAddModelIndex = selectID;
+			selectID = -1;
+			panelInput = NOTHING;
 		}
 	}
 }
@@ -1491,5 +1620,5 @@ void bt_ARMM_world::SoftTextureUpdate( void )
     osgUtil::SmoothingVisitor smooth;
     smooth.smooth( *geom );
     geom->getNormalArray()->dirty();
-#endif
 }
+#endif

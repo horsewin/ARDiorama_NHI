@@ -32,7 +32,8 @@ public:
 		Virtual_Objects_Count++;
 	}
 
-	int check_input() {
+	int check_input() 
+	{
 
 #if CAR_SIMULATION == 1
 		//Car Number 1
@@ -169,8 +170,17 @@ public:
 		}
 		return 0;
 	}
+
+	int TransmitInput(const int & input);
+
 private:
 	inline bool getKey(int key) { return GetAsyncKeyState(key)& 0x8000; }
 };
+
+int KeyboardController::TransmitInput(const int & input)
+{
+	const int transmitOffset = 200;
+	return (input>0? (transmitOffset+input) : 0);
+}
 
 #endif

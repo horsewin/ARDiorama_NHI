@@ -48,6 +48,7 @@ const int NUM_VERTS_X = 160;
 const int NUM_VERTS_Y = 120;
 const int NUM_CAR = 2;
 
+enum panelinput{NOTHING, ADDARMODEL, SPHERE, CAR1, CAR2};
 
 struct Car{
 	float	chassis_width;
@@ -109,6 +110,8 @@ public:
 		std::vector<bool>			HandFingersArray;
 		std::vector< boost::shared_ptr<btRigidBody> >	mMenuBody;
 		int mMenuIndexOffset;
+		std::vector< boost::shared_ptr<btRigidBody> >	mModelButton;
+		int mModelButtonIndexOffset;
 		
 		//virtual terrain with physics
 		btCollisionShape* groundShape;
@@ -163,6 +166,7 @@ public:
 		int create_Box();
 		int create_3dsmodel(std::string modelname);
 		void CreateMenu(ARMM::osg_Menu* osgMenu);
+		void CreateModelButton(ARMM::osg_Menu* osgMenu);
 		osg::Node* CreateSoftTexture(std::string texturename);
 
 		double get3dsScale();
@@ -209,6 +213,7 @@ public:
 		void CalcGlobalValue(float * global_x, float * global_y, const int & hand_x, const int & hand_y);
 	    void DecideCollisionCondition();
 	    void DecideCollisionPanel();
+		void DecideCollisionModelButton();
 		void SoftTextureUpdate( void );
 
 	private:

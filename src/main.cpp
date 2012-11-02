@@ -93,6 +93,7 @@ int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) ;
 void UpdateAllHands();
 int Find_Num_Hand_Pixel(float depth);
 void AssignPhysics2Osgmenu();
+void CheckerArInput();
 
 double cal_mean();
 double cal_std(double mean);
@@ -124,6 +125,8 @@ osg::Vec3d WheelsPosition[NUM_CAR][NUM_WHEEL];
 #endif /* CAR_SIMULATION == 1 */
 
 int input_key;
+bool panelCollisionLock = false;
+panelinput panelInput = NOTHING;
 
 #ifdef USE_ARMM_VRPN
 vrpn_Connection_IP* m_Connection;
@@ -289,7 +292,8 @@ int main(int argc, char* argv[])
 	//physics
 	m_world = new bt_ARMM_world();
 	ground_grid = new float[GRID_SIZE];
-	for (int i =0;i < GRID_SIZE; i++) {
+	for (int i =0;i < GRID_SIZE; i++) 
+	{
 		ground_grid[i] = 0; 
 	}
 #ifdef SIM_PARTICLES
@@ -356,7 +360,7 @@ int main(int argc, char* argv[])
 			return rc;
 		}
 
-    //get image and depth data from Kinect
+		//get image and depth data from Kinect
 		g_depth.GetMetaData(niDepthMD);
 		g_image.GetMetaData(niImageMD);
 
@@ -423,12 +427,9 @@ int main(int argc, char* argv[])
 #endif
 				counter++;
 			}
+			//(3) Checker for AR button input
+			CheckerArInput();
 
-			if(arInputButton > 0)
-			{
-				cout << osgMenu->getObjMenuNodeArray().at(arInputButton)->getName().c_str() << endl;
-				arInputButton = -1;
-			}
 			//do hand pose recognition
 			//TickCountAverageBegin();
 			m_world->Update();
@@ -436,8 +437,9 @@ int main(int argc, char* argv[])
 
 			//(B)normal client only rendering
 			RenderScene(arImage, capture);
-		}
+		} /* if(kinectTransform) */
 //		TickCountAverageEnd();
+
 #ifdef USE_ARMM_VRPN
 	//Send Car position+orientation			
 	ARMM_server->mainloop();
@@ -536,6 +538,7 @@ void RenderScene(IplImage *arImage, Capture *capture)
 			interact_state = KEEP;
 			cout << "Interaction state changed TEXTUREGET to KEEP" << endl;
 
+			//TODO •Ê‚ÌêŠ‚Å¶¬‚·‚é‚æ‚¤‚É‘‚«Š·‚¦
 			//add soft texture object into the environment
 			osgAddObjectNode(m_world->CreateSoftTexture("Data/tex.bmp"));
 			cout << "create the soft body object" << endl;
@@ -687,7 +690,6 @@ void TransformImage(IplImage* src_img, IplImage* dst_img, float markerDepth, CvS
 	cvReleaseImage(&lowerResImg2);		
 
 }
-
 
 void GenerateTrimeshGroundFromDepth(IplImage* depthIm, float markerDepth) 
 {
@@ -1171,15 +1173,13 @@ int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) {
 	return index; //return the index of current hand
 }
 
-void UpdateAllHands() {
+void UpdateAllHands() 
+{
 	for(int i = 0; i < m_world->getTotalNumberHand();i++) 
 	{
 		//In this case, spheres are displayed on the bottom-left corner of the marker
 		m_world->updateHandDepth(i, curr_hands_corners[i].x, curr_hands_corners[i].y, ratio, hand_depth_grids[i]);
-		btTransform trans = m_world->getHandTransform(i);
-		//if( m_world->GetSphereRep()){
-		osg_UpdateHand(i,m_world->debugHandX(i), m_world->debugHandY(i), m_world->debugHandZ(i));
-		//}
+		osg_UpdateHand(i, m_world->debugHandX(i), m_world->debugHandY(i), m_world->debugHandZ(i));
 	}
 
 }
@@ -1224,4 +1224,27 @@ void DeleteVirtualObject(const int & index)
 void AssignPhysics2Osgmenu()
 {
 	m_world->CreateMenu(osgMenu);
+	m_world->CreateModelButton(osgMenu);
+}
+
+void CheckerArInput()
+{
+	if(osgArInputButton > 0)
+	{
+		//set transmitted key input to client nodes
+		input_key = kc->TransmitInput(osgArInputButton);
+
+		//change panelInput state
+		panelInput = ADDARMODEL;
+
+		ModelButtonInput();
+
+		cout << osgMenu->getObjMenuNodeArray().at(osgArInputButton)->getName().c_str() << endl;
+		osgArInputButton = -1;		
+	}
+
+	if(osgArAddModelIndex > 0)
+	{
+		cout << osgMenu->getMenuModelObjectArray().at(osgArAddModelIndex)->getName().c_str() << endl;
+	}
 }
