@@ -5,6 +5,8 @@
 #define SHOWSEGMENTATION
 
 #include "main.h"
+#include <windows.h>
+#pragma comment(lib, "winmm.lib");
 
 #include <XnOS.h>
 #include <XnCppWrapper.h> 
@@ -93,7 +95,9 @@ int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) ;
 void UpdateAllHands();
 int Find_Num_Hand_Pixel(float depth);
 void AssignPhysics2Osgmenu();
+void ResetPanelCond();
 void CheckerArInput();
+int	 CheckerArModelButtonType();
 
 double cal_mean();
 double cal_std(double mean);
@@ -125,8 +129,8 @@ osg::Vec3d WheelsPosition[NUM_CAR][NUM_WHEEL];
 #endif /* CAR_SIMULATION == 1 */
 
 int input_key;
-bool panelCollisionLock = false;
-panelinput panelInput = NOTHING;
+bool panelCollisionLock;
+panelinput panelInput;
 
 #ifdef USE_ARMM_VRPN
 vrpn_Connection_IP* m_Connection;
@@ -252,8 +256,8 @@ int main(int argc, char* argv[])
 	markerSize.width = -1; 
 	markerSize.height = -1;
 
-  //init OpenNI
-  EnumerationErrors errors;
+	//init OpenNI
+	EnumerationErrors errors;
 	switch (XnStatus rc = niContext.InitFromXmlFile(KINECT_CONFIG_FILENAME, &errors)) {
 		case XN_STATUS_OK:
 			break;
@@ -266,15 +270,15 @@ int main(int argc, char* argv[])
 			return rc;
 	}
 
-  //set camera parameter
-  capture = new Camera(1, CAPTURE_SIZE, CAMERA_PARAMS_FILENAME);
+	//set camera parameter
+	capture = new Camera(1, CAPTURE_SIZE, CAMERA_PARAMS_FILENAME);
 	RegistrationParams = scaleParams(capture->getParameters(), double(REGISTRATION_SIZE.width)/double(CAPTURE_SIZE.width));
 
-  //init parameter for rendering
-  osg_init(calcProjection(RegistrationParams, capture->getDistortion(), REGISTRATION_SIZE));
+	//init parameter for rendering
+	osg_init(calcProjection(RegistrationParams, capture->getDistortion(), REGISTRATION_SIZE));
 
-  //for Kinect view
-  loadKinectParams(KINECT_PARAMS_FILENAME, &kinectParams, &kinectDistort);
+	//for Kinect view
+	loadKinectParams(KINECT_PARAMS_FILENAME, &kinectParams, &kinectDistort);
 	kinectDistort =0;
 	kinectParams->data.db[2]=320.0; 
 	kinectParams->data.db[5]=240.0;
@@ -348,6 +352,7 @@ int main(int argc, char* argv[])
 
 #if USE_OSGMENU == 1
 	AssignPhysics2Osgmenu();
+	ResetPanelCond();
 #endif
 
 /////////////////////////////////////////////Main Loop////////////////////////////////////////////////
@@ -427,8 +432,11 @@ int main(int argc, char* argv[])
 #endif
 				counter++;
 			}
+#if USE_OSGMENU == 1
 			//(3) Checker for AR button input
 			CheckerArInput();
+			CheckerArModelButtonType();
+#endif
 
 			//do hand pose recognition
 			//TickCountAverageBegin();
@@ -1221,10 +1229,23 @@ void DeleteVirtualObject(const int & index)
 	cout << index << "'s virtual objects LOST : Remain " << Virtual_Objects_Count << endl;
 }
 
+#if USE_OSGMENU == 1
 void AssignPhysics2Osgmenu()
 {
 	m_world->CreateMenu(osgMenu);
 	m_world->CreateModelButton(osgMenu);
+}
+
+void ResetPanelCond()
+{
+	panelCollisionLock	= false;
+	panelInput			= NOTHING;
+	bAddArModel			= false;
+	osgArAddModelIndex	= -1;
+	osgArInputButton	= -1;
+
+	ResetModelButtonPos();
+	m_world->ResetARButtonInput();
 }
 
 void CheckerArInput()
@@ -1242,9 +1263,49 @@ void CheckerArInput()
 		cout << osgMenu->getObjMenuNodeArray().at(osgArInputButton)->getName().c_str() << endl;
 		osgArInputButton = -1;		
 	}
+}
 
+int CheckerArModelButtonType()
+{
 	if(osgArAddModelIndex > 0)
 	{
-		cout << osgMenu->getMenuModelObjectArray().at(osgArAddModelIndex)->getName().c_str() << endl;
-	}
+		string touchStr = osgMenu->getMenuModelObjectArray().at(osgArAddModelIndex)->getName();
+		cout << touchStr.c_str() << endl;
+
+		//pushing cancel button
+		if( touchStr.find("cancel") != string::npos )
+		{
+			panelInput = REGENERATE;
+
+			ToggleMenuVisibility();
+			ToggleModelButtonVisibility();
+			ResetPanelCond();
+			MessageBeep(MB_OK);
+		}
+		else
+		{
+			osg::Vec3 pos(osgMenu->getMenuModelTransArray().at(osgArAddModelIndex)->getPosition());
+			int index = m_world->create_3dsmodel(touchStr.c_str());
+
+			//create model unit with osg::Node
+			osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(touchStr.c_str());
+			node->setName(touchStr.c_str());
+
+			float scale = 10;
+			osgAddObjectNode(node.get());
+			obj_transform_array.at(index)->setScale(osg::Vec3d(scale,scale,scale));
+			Virtual_Objects_Count++;
+			m_world->ChangeAttribute(pos.x()/10, pos.y()/10, pos.z()/10, index);
+
+			panelInput = REGENERATE;
+
+			ToggleMenuVisibility();
+			ToggleModelButtonVisibility();
+			ResetPanelCond();
+		}
+
+		//init
+		osgArAddModelIndex = -1;
+	}	
 }
+#endif

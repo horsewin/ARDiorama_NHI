@@ -109,9 +109,8 @@ interaction interact_state = INIT;
 bool	touch; //(true)touch  (false)not touch
 
 btCollisionObject * actualCollisionObject = NULL; //for collision detection
-btCollisionObject * actualPanelObject = NULL;
 int actualID = -1;
-int selectID = -1;
+int selectID;
 
 int collisionInd = -1;
 bool changeCollisionObject = false; //手と物体の間の衝突判定で手のほうを受け取らないようにするためのもの
@@ -125,7 +124,7 @@ osg::Geometry* softGeom;
 extern bool panelCollisionLock;
 extern panelinput panelInput;
 
-bool bSelectModel = false;
+bool bSelectModel;
 extern int osgArInputButton;
 extern int osgArAddModelIndex;
 
@@ -265,19 +264,13 @@ struct PanelContactSensorCallback : public btDiscreteDynamicsWorld::ContactResul
 		//colObj0 と colObj1で逆転していた
 		if(colObj0->isStaticObject())
 		{
-			//TODO const_castを使わない方法
-			// 現在衝突しているオブジェクトのポインタを保存
-			actualPanelObject = const_cast<btCollisionObject * >(colObj1);
-
 			//temporary ID variable
-			actualID = static_cast<int>(actualPanelObject->getFriction());
+			actualID = static_cast<int>(colObj1->getFriction());
 		}
 		else if(colObj1->isStaticObject())
 		{
-			actualPanelObject = const_cast<btCollisionObject * >(colObj0);
-
 			//temporary ID variable
-			actualID = static_cast<int>(actualPanelObject->getFriction());
+			actualID = static_cast<int>(colObj0->getFriction());
 		}
 		else
 		{
@@ -510,6 +503,8 @@ bt_ARMM_world::bt_ARMM_world(void)
 	HF_Size = GRID_SIZE;
 
 	textureSoftBody = 0;
+
+	ResetARButtonInput();
 }
 
 bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation/initialization
@@ -1563,17 +1558,26 @@ void bt_ARMM_world::DecideCollisionPanel()
 
 void bt_ARMM_world::DecideCollisionModelButton()
 {
+	//no selected model's button is found
+	if(selectID == -1 ) return;
+
+	//check each model's button
 	int collisionSize = mModelButton.size();
 	for(int i=1; i<collisionSize; i++)
 	{
+		//check which model's ID(instead of using Friction as ID) is matched to the selected
 		if( static_cast<int>(mModelButton.at(i)->getFriction()) == selectID)
 		{
 			cout << "Select object done!! " << selectID << endl;
 			osgArAddModelIndex = selectID;
-			selectID = -1;
-			panelInput = NOTHING;
 		}
 	}
+}
+
+void bt_ARMM_world::ResetARButtonInput( void )
+{
+	selectID		= -1;
+	bSelectModel	= false;
 }
 
 void bt_ARMM_world::SoftTextureUpdate( void )

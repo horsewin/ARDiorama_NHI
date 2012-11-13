@@ -48,7 +48,7 @@ const int NUM_VERTS_X = 160;
 const int NUM_VERTS_Y = 120;
 const int NUM_CAR = 2;
 
-enum panelinput{NOTHING, ADDARMODEL, SPHERE, CAR1, CAR2};
+enum panelinput{NOTHING, ADDARMODEL, SPHERE, CAR1, CAR2, REGENERATE};
 
 struct Car{
 	float	chassis_width;
@@ -208,6 +208,8 @@ public:
 			///or we will add type checking
 			return (btSoftRigidDynamicsWorld*) m_dynamicsWorld;
 		}
+
+		void ResetARButtonInput( void );
 
 	private:
 		void CalcGlobalValue(float * global_x, float * global_y, const int & hand_x, const int & hand_y);

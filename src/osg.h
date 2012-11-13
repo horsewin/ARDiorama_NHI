@@ -35,6 +35,8 @@
 
 #include "UserConstant.h"
 
+#include <tchar.h>
+
 #define WINDOW_WIDTH	640
 #define WINDOW_HEIGHT	480
 
@@ -67,6 +69,7 @@ void ToggleModelButtonVisibility();
 bool IsMenuVisibiilty();
 bool IsModelButtonVisibiilty();
 void ModelButtonAnimation();
+void ResetModelButtonPos();
 
 namespace
 {
@@ -237,9 +240,9 @@ public:
 	CvPoint2D32f osg_carSize;
 	osgViewer::Viewer viewer;
 
-	int osgArInputButton = -1;
-	int osgArAddModelIndex = -1;
-	static bool bAddArModel = false;
+	int osgArInputButton;
+	int osgArAddModelIndex;
+	bool bAddArModel;
 	double gAddModelAnimation = 0;
 
 /** create quad at specified position. */
@@ -610,7 +613,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 
 void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][4], osg::Vec3d wv[][4], CvMat *cParams, CvMat *cDistort, std::vector <osg::Quat> q_array, std::vector<osg::Vec3d>  v_array) 
 {
-	if(gAddModelAnimation >0.001 || gAddModelAnimation < -0.001)
+	if(gAddModelAnimation >0.001 || gAddModelAnimation < -0.001) //means "!= 0.0"
 	{
 		ModelButtonAnimation();
 	}
@@ -663,7 +666,6 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 	//change the condition of regular state if lists of models is shown in AR space into invisible condition
 	if( !bAddArModel && IsModelButtonVisibiilty())
 	{
-		cout << "button state -- " << IsModelButtonVisibiilty() << endl;
 		ToggleModelButtonVisibility();
 	}
 }
@@ -894,8 +896,7 @@ void ModelButtonInput()
 	ToggleMenuVisibility();
 
 	//add menu object into the AR scene
-	
-	
+	PlaySound(_T("machine_call.wav"), NULL, SND_ASYNC);	
 }
 
 void ToggleMenuVisibility()
@@ -917,11 +918,9 @@ void ToggleMenuVisibility()
 			pMenuTransArray.at(idx)->setNodeMask(castShadowMask);
 
 			//disappear ar model buttons
-			gAddModelAnimation = -1*shiftVal;
+			//gAddModelAnimation = -1*shiftVal;
 		}
 	}
-
-	cout << gAddModelAnimation << endl;
 
 	osgMenu->setObjMenuTransformArray(pMenuTransArray);
 	osgMenu->ToggleMenuButtonState();
@@ -959,11 +958,14 @@ void ModelButtonAnimation()
 {
 	std::vector< osg::ref_ptr<osg::PositionAttitudeTransform> > pModelTransArray = osgMenu->getMenuModelTransArray();
 
+	//check if valid models are found?
 	if(pModelTransArray.empty())
 	{
 		cerr << "No model button is found in osg.h" << endl;
 		return;
 	}
+
+	//set the action in current frame
 	double posZ = pModelTransArray.at(0)->getPosition().z();
 	const double zThreshold = 2.0;
 	if(posZ > zThreshold)
@@ -971,11 +973,31 @@ void ModelButtonAnimation()
 		gAddModelAnimation = 0;
 		return;
 	}
-	cout << "PosZ = " << posZ << endl;
+
+	//set the pos of each model in current frame
 	REP(idx, pModelTransArray.size())
 	{
 		osg::Vec3 newPos = pModelTransArray.at(idx)->getPosition();
 		newPos.set(newPos.x(), newPos.y(), newPos.z() + gAddModelAnimation);
+		pModelTransArray.at(idx)->setPosition(newPos);		
+	}
+
+}
+
+void ResetModelButtonPos()
+{
+	std::vector< osg::ref_ptr<osg::PositionAttitudeTransform> > pModelTransArray = osgMenu->getMenuModelTransArray();
+
+	if(pModelTransArray.empty())
+	{
+		cerr << "No model button is found in osg.h" << endl;
+		return;
+	}
+
+	REP(idx, pModelTransArray.size())
+	{
+		osg::Vec3 newPos = pModelTransArray.at(idx)->getPosition();
+		newPos.set(newPos.x(), newPos.y(), osgMenu->GetInitPosZ());
 		pModelTransArray.at(idx)->setPosition(newPos);		
 	}
 
