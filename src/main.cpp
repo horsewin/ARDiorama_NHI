@@ -95,6 +95,8 @@ int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) ;
 void UpdateAllHands();
 int Find_Num_Hand_Pixel(float depth);
 void AssignPhysics2Osgmenu();
+void ResetAddModelMode();
+void ResetTextureTransferMode();
 void ResetPanelCond();
 void CheckerArInput();
 int	 CheckerArModelButtonType();
@@ -117,8 +119,8 @@ IplImage *depthmask_for_mesh;
 //for segmentation hand region
 int cont_num; 
 std::vector <CvRect>	cont_boundbox; 
-std::vector <CvBox2D> cont_boundbox2D; 
-std::vector <CvPoint> cont_center;
+std::vector <CvBox2D>	cont_boundbox2D; 
+std::vector <CvPoint>	cont_center;
 
 #if CAR_SIMULATION == 1
 //Graphical objects
@@ -129,8 +131,9 @@ osg::Vec3d WheelsPosition[NUM_CAR][NUM_WHEEL];
 #endif /* CAR_SIMULATION == 1 */
 
 int input_key;
-bool panelCollisionLock;
+bool panelCollisionLock;	//for mutual exclusion of panel input
 panelinput panelInput;
+bool bTextureTransfer;
 
 #ifdef USE_ARMM_VRPN
 vrpn_Connection_IP* m_Connection;
@@ -352,7 +355,9 @@ int main(int argc, char* argv[])
 
 #if USE_OSGMENU == 1
 	AssignPhysics2Osgmenu();
+	ResetAddModelMode();
 	ResetPanelCond();
+	ResetTextureTransferMode();
 #endif
 
 /////////////////////////////////////////////Main Loop////////////////////////////////////////////////
@@ -1207,7 +1212,7 @@ void CreateOSGSphereProxy() {
 
 void DeleteVirtualObject(const int & index)
 {
-	vector<osg::PositionAttitudeTransform*>::iterator it = obj_transform_array.begin() + index;
+	vector<osg::ref_ptr<osg::PositionAttitudeTransform>>::iterator it = obj_transform_array.begin() + index;
 	vector<osg::ref_ptr<osg::Node>>::iterator it2 = obj_node_array.begin() + index;
 
 	if( shadowedScene->getNumChildren() <= index ||
@@ -1236,31 +1241,65 @@ void AssignPhysics2Osgmenu()
 	m_world->CreateModelButton(osgMenu);
 }
 
+void ResetAddModelMode()
+{
+	bAddArModel			= false;
+	osgArAddModelIndex	= -1;
+	ResetModelButtonPos();
+	m_world->ResetARButtonInput();
+}
+
+void ResetTextureTransferMode()
+{
+	bTextureTransfer = false;
+}
+
 void ResetPanelCond()
 {
 	panelCollisionLock	= false;
 	panelInput			= NOTHING;
-	bAddArModel			= false;
-	osgArAddModelIndex	= -1;
 	osgArInputButton	= -1;
-
-	ResetModelButtonPos();
-	m_world->ResetARButtonInput();
 }
 
 void CheckerArInput()
 {
 	if(osgArInputButton > 0)
 	{
+		string buttonStr = osgMenu->getObjMenuNodeArray().at(osgArInputButton)->getName(); 
+
 		//set transmitted key input to client nodes
+		//TODO : implementation network part
 		input_key = kc->TransmitInput(osgArInputButton);
 
 		//change panelInput state
-		panelInput = ADDARMODEL;
+		if(buttonStr.find("model.3ds") != string::npos)	//MODE: Add model
+		{
+			panelInput = ADDARMODEL;
+			ModelButtonInput();
+		}
+		else if(buttonStr.find("reset.3ds") != string::npos)	//MODE: Reset virtual models
+		{
+			osg_resetNodes();
+			ResetPanelCond();
+		}
+		else if(buttonStr.find("Transfer") != string::npos)	//MODE: Texture Transfer
+		{
+			if(m_world->m_objectsBody.size() < 2)
+			{
+				cerr << "No enough model is found : need two at least" << endl;
+				ResetPanelCond();
+			}
+			//having two models at least in AR env
+			else
+			{
+				bTextureTransfer = true;
+				ToggleMenuVisibility();	//menu should be disappeared
+			}
+		}
 
-		ModelButtonInput();
+		cout << buttonStr.c_str() << endl;
 
-		cout << osgMenu->getObjMenuNodeArray().at(osgArInputButton)->getName().c_str() << endl;
+		//reset
 		osgArInputButton = -1;		
 	}
 }
@@ -1275,36 +1314,34 @@ int CheckerArModelButtonType()
 		//pushing cancel button
 		if( touchStr.find("cancel") != string::npos )
 		{
-			panelInput = REGENERATE;
-
-			ToggleMenuVisibility();
-			ToggleModelButtonVisibility();
-			ResetPanelCond();
 			MessageBeep(MB_OK);
 		}
 		else
 		{
 			osg::Vec3 pos(osgMenu->getMenuModelTransArray().at(osgArAddModelIndex)->getPosition());
-			int index = m_world->create_3dsmodel(touchStr.c_str());
 
 			//create model unit with osg::Node
-			osg::ref_ptr<osg::Node> node = osgDB::readNodeFile(touchStr.c_str());
-			node->setName(touchStr.c_str());
+			osg::ref_ptr<osg::Node> node = dynamic_cast<osg::Node*>(
+				osgMenu->getMenuModelObjectArray().at(osgArAddModelIndex)->clone(osg::CopyOp::SHALLOW_COPY)
+			);
+
+			//add physics model
+			int index = m_world->create_3dsmodel(touchStr.c_str());
 
 			float scale = 10;
 			osgAddObjectNode(node.get());
 			obj_transform_array.at(index)->setScale(osg::Vec3d(scale,scale,scale));
+			obj_transform_array.at(index)->setNodeMask(invisibleMask);
 			Virtual_Objects_Count++;
 			m_world->ChangeAttribute(pos.x()/10, pos.y()/10, pos.z()/10, index);
-
-			panelInput = REGENERATE;
-
-			ToggleMenuVisibility();
-			ToggleModelButtonVisibility();
-			ResetPanelCond();
 		}
 
-		//init
+		//reset
+		ToggleMenuVisibility();
+		ToggleModelButtonVisibility();
+		ToggleVirtualObjVisibility();
+		ResetAddModelMode();
+		ResetPanelCond();
 		osgArAddModelIndex = -1;
 	}	
 }

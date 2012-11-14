@@ -164,7 +164,7 @@ public:
 		//
 		int create_Sphere();
 		int create_Box();
-		int create_3dsmodel(std::string modelname);
+		int create_3dsmodel(std::string modelname, osg::ref_ptr<osg::Node> sample = NULL);
 		void CreateMenu(ARMM::osg_Menu* osgMenu);
 		void CreateModelButton(ARMM::osg_Menu* osgMenu);
 		osg::Node* CreateSoftTexture(std::string texturename);

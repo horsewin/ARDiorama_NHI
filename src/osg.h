@@ -66,6 +66,7 @@ void OsgInitMenu();
 void OsgInitModelMenu();
 void ToggleMenuVisibility();
 void ToggleModelButtonVisibility();
+void ToggleVirtualObjVisibility();
 bool IsMenuVisibiilty();
 bool IsModelButtonVisibiilty();
 void ModelButtonAnimation();
@@ -202,7 +203,7 @@ public:
 
 	//for virtual objects
 	std::vector<osg::ref_ptr<osg::Node>> obj_node_array;
-	std::vector<osg::PositionAttitudeTransform*> obj_transform_array;
+	std::vector<osg::ref_ptr<osg::PositionAttitudeTransform>> obj_transform_array;
 
 
 	std::vector<osg::ref_ptr<osg::Node>> hand_object_array;
@@ -676,6 +677,12 @@ void osg_uninit()
 	cvReleaseImage(&mGLImage);
 }
 
+void osg_resetNodes()
+{
+	obj_node_array.clear();
+	obj_transform_array.clear();
+}
+
 void osg_UpdateHeightfieldTrimesh(float *ground_grid)
 {
 	int index =0;
@@ -892,8 +899,9 @@ void ModelButtonInput()
 	ToggleModelButtonVisibility();
 	bAddArModel = true;
 
-	//disappearing all buttons temporary
+	//disappearing all buttons and virtual objects temporary 
 	ToggleMenuVisibility();
+	ToggleVirtualObjVisibility();
 
 	//add menu object into the AR scene
 	PlaySound(_T("machine_call.wav"), NULL, SND_ASYNC);	
@@ -942,6 +950,16 @@ void ToggleModelButtonVisibility()
 
 	osgMenu->setMenuModelTransArray(pModelTransArray);
 	osgMenu->ToggleModelButtonState();
+}
+
+void ToggleVirtualObjVisibility()
+{
+	REP(i,obj_transform_array.size())
+	{
+		unsigned int mask = obj_transform_array.at(i)->getNodeMask() ^ (castShadowMask|rcvShadowMask);
+		obj_transform_array.at(i)->setNodeMask(mask);
+		printf("Mask = %d\n", mask);
+	}
 }
 
 bool IsMenuVisibiilty()

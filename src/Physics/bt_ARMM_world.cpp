@@ -123,6 +123,7 @@ osg::Geometry* softGeom;
 
 extern bool panelCollisionLock;
 extern panelinput panelInput;
+extern bool bTextureTransfer;
 
 bool bSelectModel;
 extern int osgArInputButton;
@@ -995,7 +996,7 @@ int bt_ARMM_world::create_Box()
 }
 
 //オブジェクトの回転・並進をさせるためにはmotion stateの値を変更
-int bt_ARMM_world::create_3dsmodel(string modelname)
+int bt_ARMM_world::create_3dsmodel(string modelname, osg::ref_ptr<osg::Node> sample)
 {
 	//load 3ds model
 	this->modelname = modelname;
@@ -1005,7 +1006,10 @@ int bt_ARMM_world::create_3dsmodel(string modelname)
 	//set object mass
 	float boxMass = 50;
 
-	osg::ref_ptr<osg::Node> sample = osgDB::readNodeFile(modelname.c_str());
+	if(!sample.valid())
+	{
+		sample = osgDB::readNodeFile(modelname.c_str());
+	}
 
 	//create bounding box
 	btDefaultMotionState* state = new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)));  //ここをいじる
@@ -1289,28 +1293,31 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 		HandFingersArray[fingersIdx[idx]]=true;
 	}
 
-
-	//check collision to kinematic box objects with hands
-	REP(obj, m_objectsBody.size())
+	//Texture Transfer ON
+	if(bTextureTransfer)
 	{
-		if( m_objectsBody.at(obj)->isKinematicObject() )
+		//check collision to kinematic box objects with hands
+		REP(obj, m_objectsBody.size())
 		{
-			REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
+			if( m_objectsBody.at(obj)->isKinematicObject() )
 			{
-				//衝突のチェック
-				if(HandFingersArray[i])
-				{
-					//between a finger-tip and a virtual object
-		   			m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj).get(), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
-
-
-				}
-	   			//m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
-				//collision check with a texture soft body
-				if(textureSoftBody)
+				REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
 				{
 					//衝突のチェック
-					m_dynamicsWorld->contactPairTest(HandObjectsArray.at(index)->handSphereRigidBody.at(i), textureSoftBody, pinchcallback);
+					if(HandFingersArray[i])
+					{
+						//between a finger-tip and a virtual object
+		   				m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj).get(), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
+
+
+					}
+	   				//m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
+					//collision check with a texture soft body
+					if(textureSoftBody)
+					{
+						//衝突のチェック
+						m_dynamicsWorld->contactPairTest(HandObjectsArray.at(index)->handSphereRigidBody.at(i), textureSoftBody, pinchcallback);
+					}
 				}
 			}
 		}
