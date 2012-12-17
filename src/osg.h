@@ -88,13 +88,13 @@ private:
 	OPIRALibrary::Registration *r;
 	typedef std::map<std::string, osg::ref_ptr<osg::MatrixTransform>> MarkerMap;
 	MarkerMap mMarkers;
-	osg::PositionAttitudeTransform* osgTrans;
-	osg::Light* light;
+	osg::ref_ptr<osg::PositionAttitudeTransform> osgTrans;
+	osg::ref_ptr<osg::Light> light;
 
 public:
 	ARTrackedNode(): osg::Group() {
 		r = new RegistrationOPIRAMT(new OCVSurf());
-		osg::Group* lightGroup = new osg::Group;  
+		osg::ref_ptr<osg::Group> lightGroup = new osg::Group;  
 		// Create a local light.
 		light = new osg::Light();
 		light->setLightNum(0);
@@ -106,23 +106,26 @@ public:
 		light->setQuadraticAttenuation(0.05f);
 		light->setPosition(osg::Vec4(30, -5, 5, 0.0));
 
-		osg::LightSource* lightSource = new osg::LightSource;	
-		lightSource->setLight(light);
+		osg::ref_ptr<osg::LightSource> lightSource = new osg::LightSource;	
+		lightSource->setLight(light.get());
 		lightSource->setLocalStateSetModes(osg::StateAttribute::ON); 
 		lightSource->setStateSetModes(*this->getOrCreateStateSet(), osg::StateAttribute::ON);
-		lightGroup->addChild(lightSource);
+		lightGroup->addChild(lightSource.get());
 	
-		this->addChild(lightGroup);
+		this->addChild(lightGroup.get());
 	}
 
-	osg::Light *getLight() {
-		return light;
+	osg::Light* getLight() {
+		return light.get();
 	}
 
-	void stop() {
+	void stop() 
+	{
 		delete r;
 	}
-	void setVisible(int index, bool visible) {
+
+	void setVisible(int index, bool visible)
+	{
 		osg::ref_ptr<osg::Switch> s = (osg::Switch*)this->getChild(index);
 		if (visible) s->setAllChildrenOn(); 
 		else s->setAllChildrenOff();
@@ -147,9 +150,11 @@ public:
 		mTransforms.clear();
 	}
 
-	int addMarkerContent(string imageFile, int maxLengthSize, int maxLengthScale, osg::Node *node) {
+	int addMarkerContent(string imageFile, int maxLengthSize, int maxLengthScale, osg::Node *node) 
+	{
 		r->removeMarker(imageFile);
-		if (r->addResizedScaledMarker(imageFile, maxLengthSize, maxLengthScale)) {
+		if (r->addResizedScaledMarker(imageFile, maxLengthSize, maxLengthScale)) 
+		{
 			Marker m = r->getMarker(imageFile);
 
 			osgTrans = new osg::PositionAttitudeTransform();
@@ -163,24 +168,24 @@ public:
 			osgTrans->addChild(node);
 
 			osg::ref_ptr<osg::Switch> foundObject = new osg::Switch();
-			foundObject->addChild(osgTrans);
+			foundObject->addChild(osgTrans.get());
 
 			osg::ref_ptr<osg::MatrixTransform> mt = new osg::MatrixTransform();
-			mt->addChild(foundObject);
+			mt->addChild(foundObject.get());
 
 			osg::ref_ptr<osg::Switch> trackObject = new osg::Switch();
 			trackObject->addChild(mt);
-			this->addChild(trackObject);
+			this->addChild(trackObject.get());
 
 			mMarkers[imageFile] = mt;
-			return this->getChildIndex(trackObject);
+			return(this->getChildIndex(trackObject.get()));
 		} else {
 			return -1;
 		}
 	}
 
 	osg::Node* getOsgTrans() {
-		return osgTrans;
+		return osgTrans.get();
 	}
 
 	void addModel(osg::Node *node) {
@@ -570,7 +575,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 		mt->setScale(osg::Vec3d(scale,scale,scale));
 		mt->setAttitude(osg::Quat(0,0,0,1));       
 		mt->setPosition(osg::Vec3d(x, y, z)); 
-		mt->addChild( geode.get() );  
+		mt->addChild( geode.get() );
 
 		//Set up the depth testing for the landscale
 		osg::Depth * depth = new osg::Depth();
@@ -581,6 +586,7 @@ void osg_inittracker(string markerName, int maxLengthSize, int maxLengthScale)
 		//Set up the shadow masks
 		mt->setNodeMask( rcvShadowMask );
 		mt->getOrCreateStateSet()->setRenderBinDetails(0, "RenderBin");
+
 #if CAR_SIMULATION == 1
 		car_transform.at(0)->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
 		car_transform.at(1)->getOrCreateStateSet()->setRenderBinDetails(2, "RenderBin");
@@ -623,8 +629,9 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 	cvCvtColor(mGLImage, mGLImage, CV_BGR2RGB);
 	mVideoImage->setImage(mGLImage->width, mGLImage->height, 0, 3, GL_RGB, GL_UNSIGNED_BYTE, (unsigned char*)mGLImage->imageData, osg::Image::NO_DELETE);
 
+#ifdef USE_ARMM_SERVER_VIEW
 #if CAR_SIMULATION == 1
-	if(car_transform.at(0)) {
+	if(car_transform.at(0) && car_transform.at(1)) {
 		for(int i = 0; i < 2; i++) {
 			car_transform.at(i)->setAttitude(q[i]);
 			car_transform.at(i)->setPosition(v[i]);
@@ -646,7 +653,6 @@ void osg_render(IplImage *newFrame, osg::Quat *q,osg::Vec3d  *v, osg::Quat wq[][
 		//printf("POS=(%.2f, %.2f, %.2f)\n",pos.x(), pos.y(), pos.z());
 	}
 
-#ifdef USE_ARMM_SERVER_VIEW
 	if (!viewer.done()) 
 	{
 		if (CAPTURE_SIZE.width != REGISTRATION_SIZE.width || CAPTURE_SIZE.height != REGISTRATION_SIZE.height) 
@@ -712,7 +718,7 @@ void osgAddObjectNode(osg::Node* n)
 		osg::DegreesToRadians(0.f), osg::Vec3d(0.0, 0.0, -1.0)
 		));
 	obj_transform_array.at(index)->setPosition(osg::Vec3d(0.0, 0.0, 0.0));
-	obj_transform_array.at(index)->setNodeMask(rcvShadowMask | castShadowMask);
+	obj_transform_array.at(index)->setNodeMask(castShadowMask);
 	obj_transform_array.at(index)->addChild(obj_node_array.at(index));
 
 	shadowedScene->addChild( obj_transform_array.at(index) );
@@ -727,12 +733,15 @@ void osg_createHand(int index, float x, float y, float world_scale, float ratio)
 {
 //	float sphere_size = 0.5;
 	float sphere_size = world_scale * ratio;
-  cout << "Sphere size = " << world_scale*ratio << endl;
+	cout << "Sphere size = " << world_scale*ratio << endl;
 	//float sphere_size = world_scale; // test
+
 	printf("Hand%d Created : ws=%f, ratio=%f\n", index, world_scale, ratio);
 	hand_object_global_array.push_back(new osg::PositionAttitudeTransform());
-	for(int i = 0; i < MIN_HAND_PIX; i++) {
-		for(int j = 0; j < MIN_HAND_PIX; j++) {
+	for(int i = 0; i < MIN_HAND_PIX; i++) 
+	{
+		for(int j = 0; j < MIN_HAND_PIX; j++) 
+		{
 			//create a part of hands 
 			osg::ref_ptr< osg::Sphere > sphere = new osg::Sphere(osg::Vec3d(0,0,0), sphere_size);
 		    osg::ref_ptr< osg::ShapeDrawable> shape = new osg::ShapeDrawable( sphere.get() );
@@ -747,6 +756,7 @@ void osg_createHand(int index, float x, float y, float world_scale, float ratio)
 			hand_object_transform_array[index].at(curr)->setScale(osg::Vec3d(SPHERE_SCALE,SPHERE_SCALE,SPHERE_SCALE));
 			hand_object_transform_array[index].at(curr)->setPosition(osg::Vec3d(j*SPHERE_SCALE, i*SPHERE_SCALE, 1000));
 			hand_object_transform_array[index].at(curr)->addChild( geode.get() );
+			hand_object_transform_array[index].at(curr)->setNodeMask(rcvShadowMask);
 			hand_object_global_array.at(index)->addChild( hand_object_transform_array[index].at(curr));
 		}
 	}
@@ -904,6 +914,8 @@ void ModelButtonInput()
 	ToggleVirtualObjVisibility();
 
 	//add menu object into the AR scene
+
+	//play some effect
 	PlaySound(_T("machine_call.wav"), NULL, SND_ASYNC);	
 }
 
@@ -956,9 +968,8 @@ void ToggleVirtualObjVisibility()
 {
 	REP(i,obj_transform_array.size())
 	{
-		unsigned int mask = obj_transform_array.at(i)->getNodeMask() ^ (castShadowMask|rcvShadowMask);
+		unsigned int mask = obj_transform_array.at(i)->getNodeMask() ^ (castShadowMask);
 		obj_transform_array.at(i)->setNodeMask(mask);
-		printf("Mask = %d\n", mask);
 	}
 }
 
@@ -985,7 +996,7 @@ void ModelButtonAnimation()
 
 	//set the action in current frame
 	double posZ = pModelTransArray.at(0)->getPosition().z();
-	const double zThreshold = 2.0;
+	const double zThreshold = 6.0;
 	if(posZ > zThreshold)
 	{
 		gAddModelAnimation = 0;

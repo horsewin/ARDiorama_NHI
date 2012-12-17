@@ -4,7 +4,7 @@
 #define SIM_MICROMACHINE 1
 #define CAR_SIMULATION 1
 #define USE_ARMM_VRPN 1
-#define USE_ARMM_SERVER_VIEW
+//#define USE_ARMM_SERVER_VIEW
 //#define USE_ARMM_VRPN_RECEIVER 1
 #define USE_SKIN_SEGMENTATION 1
 //#define USE_OPTICAL_FLOW 1 
@@ -17,7 +17,7 @@
 	const int NUMBER_CAR = 2;
 	const int NUM_WHEEL = 4;
 #else
-	const int NUMBER_C	AR = 0;
+	const int NUMBER_CAR = 0;
 	const int NUM_WHEEL = 0;
 #endif
 
@@ -26,8 +26,8 @@ const float HAND_BOX_CM = 20.f; // 25 cm
 //const float HAND_BOX_CM = 40;
 //const float MIN_HAND_PIX = 29; 
 //const int HAND_GRID_SIZE = 841;
-//const float KINECT_PIX_PER_DEPTH = 0.8982;
-const float KINECT_PIX_PER_DEPTH = 0.67f;
+const float KINECT_PIX_PER_DEPTH = 0.4610778;
+//const float KINECT_PIX_PER_DEPTH = 0.67f; //TODO it should be dynamic value??
 const int GRID_SIZE =19200;
 
 #define CV_RED cvScalar(255,0,0)
@@ -41,7 +41,7 @@ const float CUBE_SIZE = 4;
 
 const int		SKIN_X = 640;
 const int		SKIN_Y = 480;
-const float MIN_HAND_PIX = 21; // 11 pixels
+const float		MIN_HAND_PIX = 21; // 11 pixels
 const int		HAND_GRID_SIZE = 441;// 15x15
 const int		HAND_SIZE = HAND_GRID_SIZE;
 

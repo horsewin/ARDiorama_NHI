@@ -2,7 +2,8 @@
 
 #define UPDATE_TRIMESH 1
 #define SIM_FREQUENCY 10
-#define SHOWSEGMENTATION
+#define SHOWSEGMENTATION 1
+#define SHOWKINECTIMG 0
 
 #include "main.h"
 #include <windows.h>
@@ -174,6 +175,7 @@ double previous_time = 0.0;
 int    count_frame   = 0;
 deque<double> fps;
 double time_spent    = 0.0;
+const float img_ratio = CAPTURE_SIZE.width / SKIN_X;
 /////////////////////
 
 namespace{
@@ -384,7 +386,9 @@ int main(int argc, char* argv[])
 		transColor320 = cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_8U, 3);
 		memcpy(depthIm->imageData, niDepthMD.Data(), depthIm->imageSize);	
 		//cvCircle(colourIm, cvPoint(marker_origin.x,marker_origin.y), 5, CV_BLUE, 3);
+#ifdef SHOWKINECTIMG
 		cvShowImage("Kinect View", colourIm);
+#endif
 		IplImage *arImage = capture->getFrame();
 		cvWaitKey(1); 
 
@@ -618,7 +622,7 @@ void loadKinectTransform(char *filename)
 		CvSeq *s = cvGetFileNodeByName(fs, 0, "MarkerSize")->data.seq;
 		markerSize.width = cvReadInt((CvFileNode*)cvGetSeqElem(s, 0));
 		markerSize.height = cvReadInt((CvFileNode*)cvGetSeqElem(s, 1));
-
+		printf("Makerker Size = %d\n", markerSize.width);
 		s = cvGetFileNodeByName(fs, 0, "MarkerOrigin")->data.seq;
 		marker_origin.x = cvReadInt((CvFileNode*)cvGetSeqElem(s, 0));
 		marker_origin.y = cvReadInt((CvFileNode*)cvGetSeqElem(s, 1));
@@ -742,13 +746,16 @@ void GenerateTrimeshGroundFromDepth(IplImage* depthIm, float markerDepth)
 	cvReleaseImage(&depthtmp);
 }
 
-void inpaintDepth(DepthMetaData *niDepthMD, bool halfSize) {
+void inpaintDepth(DepthMetaData *niDepthMD, bool halfSize)
+{
 	IplImage *depthIm, *depthImFull;
-	
+
+	const float div = 4.0;
+
 	if (halfSize) {
 		depthImFull = cvCreateImage(cvSize(niDepthMD->XRes(), niDepthMD->YRes()), IPL_DEPTH_16U, 1);
 		depthImFull->imageData = (char*)niDepthMD->WritableData();
-		depthIm = cvCreateImage(cvSize(depthImFull->width/4.0, depthImFull->height/4.0), IPL_DEPTH_16U, 1);
+		depthIm = cvCreateImage(cvSize(depthImFull->width/div, depthImFull->height/div), IPL_DEPTH_16U, 1);
 		cvResize(depthImFull, depthIm, 0);
 	} else {
 		depthIm = cvCreateImage(cvSize(niDepthMD->XRes(), niDepthMD->YRes()), IPL_DEPTH_16U, 1);
@@ -798,8 +805,9 @@ void inpaintDepth(DepthMetaData *niDepthMD, bool halfSize) {
 
 void setWorldOrigin() 
 {
-	WORLD_ORIGIN_X = marker_origin.x/4; WORLD_ORIGIN_Y = marker_origin.y/4; 
-	//WORLD_ORIGIN_X = marker_origin.x/2; WORLD_ORIGIN_Y = marker_origin.y/2; 
+	const int div = 4;
+	WORLD_ORIGIN_X = marker_origin.x/div; 
+	WORLD_ORIGIN_Y = marker_origin.y/div; 
 	center_trimesh = cvPoint2D32f(WORLD_ORIGIN_X, WORLD_ORIGIN_Y);
 	m_world->set_center_trimesh(WORLD_ORIGIN_X,WORLD_ORIGIN_Y);
 }
@@ -810,11 +818,12 @@ void registerMarker()
 	{
 		//Load in the marker for registration
 		osg_inittracker(MARKER_FILENAME, 400, markerSize.width);	
-
+		printf("Makerker Size = %d\n", markerSize.width);
 		//Set OSG Menu
 
 		//Recreat world and controls
 		delete kc;
+
 		//delete xc;
 		delete m_world;
 		m_world = new bt_ARMM_world();
@@ -860,7 +869,7 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	IplImage* depthImResized  = cvCreateImage(cvSize(SKIN_SEGM_SIZE.width, SKIN_SEGM_SIZE.height), IPL_DEPTH_32F, 1);
 	IplImage* colourIm640	  = cvCreateImage(CAPTURE_SIZE, IPL_DEPTH_8U, 3);
 	cvResize(transDepth320, depthImResized);
-	cvSmooth(depthImResized, depthImResized, CV_MEDIAN, 5);
+	cvSmooth(depthImResized, depthImResized, CV_MEDIAN, 3);
 
 	//----->Threshold too near region from Kinect
 	for ( int i = 0 ; i < transDepth320->height ; i ++ )
@@ -870,14 +879,15 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 			float depth_ =  CV_IMAGE_ELEM(transDepth320, float, i, j);
 
 			// dist from ground is larger than 30cm => removing the pixel
-			if( depth_ > 30){
+			if( depth_ > 30 || depth_ <= 1)
+			{
 				CV_IMAGE_ELEM(transDepth320, float, i, j) = 0;
 			}
 		}
 	}
 
 	//----->Threshold at marker's depth
-	cvThreshold(transDepth320, depthTmp, 1, 255, CV_THRESH_BINARY_INV); //thres at 1cm above marker
+	cvThreshold(transDepth320, depthTmp, 0, 255, CV_THRESH_BINARY_INV); //thres at 1cm above marker
 	cvResize(transColor320, colourImResized);
 	cvSet(colourImResized, cvScalar(0), depthTmp);
 	cvResize(colourImResized, colourIm640, CV_INTER_NN);
@@ -942,8 +952,10 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 		//int resize_ratio_x = SKIN_SEGM_SIZE.width / MIN_HAND_PIX;
 		//int resize_ratio_y = SKIN_SEGM_SIZE.height/ MIN_HAND_PIX;
 		int depth_offset = 0.0; //depth offset
-		for(int j = 0; j < MIN_HAND_PIX; j++) {
-			for(int k = 0; k < MIN_HAND_PIX; k++) {
+		for(int j = 0; j < MIN_HAND_PIX; j++)
+		{
+			for(int k = 0; k < MIN_HAND_PIX; k++) 
+			{
 				int ind = j * MIN_HAND_PIX + k;
 				hand_depth_grids[i][ind] = CV_IMAGE_ELEM(depth11, float, ((int)MIN_HAND_PIX-1)-k, j) - depth_offset ;
 			}
@@ -977,7 +989,8 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 
 		curr_hands_corners[i].x /= skin_ratio;
 		curr_hands_corners[i].y /= skin_ratio;
-		if(m_world->getTotalNumberHand() < num_hand_in_scene) {
+		if(m_world->getTotalNumberHand() < num_hand_in_scene) 
+		{
 			CreateHand(curr_hands_corners[i].x, curr_hands_corners[i].y);
 		}
 
@@ -1052,8 +1065,8 @@ void FindHands(IplImage *depthIm, IplImage *colourIm)
 	//<--(FINGERTIPS DETECTION) end
 	//TickCountAverageEnd();
 #ifdef SHOWSEGMENTATION
-//	cvShowImage("Op_Flow_640",col_640);
-	//cvShowImage("transcolor",transColor320);
+	cvShowImage("Op_Flow_640",col_640);
+	cvShowImage("transcolor",transColor320);
 #endif
 
 	//memory release
@@ -1177,7 +1190,8 @@ int Find_Num_Hand_Pixel(float depth)
 
 #ifdef USE_SKIN_SEGMENTATION
 
-int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) {
+int CreateHand(int lower_left_corn_X, int lower_left_corn_Y) 
+{
 	int index = m_world->getTotalNumberHand();
 
 	ratio = curr_hands_ratio[0];
@@ -1288,6 +1302,10 @@ void CheckerArInput()
 			{
 				cerr << "No enough model is found : need two at least" << endl;
 				ResetPanelCond();
+
+				//play some effect
+				PlaySound(_T("jump02.wav"), NULL, SND_ASYNC);	
+
 			}
 			//having two models at least in AR env
 			else
@@ -1314,14 +1332,18 @@ int CheckerArModelButtonType()
 		//pushing cancel button
 		if( touchStr.find("cancel") != string::npos )
 		{
+			input_key = 301;
 			MessageBeep(MB_OK);
 		}
 		else
 		{
 			osg::Vec3 pos(osgMenu->getMenuModelTransArray().at(osgArAddModelIndex)->getPosition());
 
+			input_key = osgMenu->GetKeyAssignment(static_cast<unsigned int>(osgArAddModelIndex));
+
 			//create model unit with osg::Node
-			osg::ref_ptr<osg::Node> node = dynamic_cast<osg::Node*>(
+			osg::ref_ptr<osg::Node> node = dynamic_cast<osg::Node*>
+			(
 				osgMenu->getMenuModelObjectArray().at(osgArAddModelIndex)->clone(osg::CopyOp::SHALLOW_COPY)
 			);
 
@@ -1332,8 +1354,13 @@ int CheckerArModelButtonType()
 			osgAddObjectNode(node.get());
 			obj_transform_array.at(index)->setScale(osg::Vec3d(scale,scale,scale));
 			obj_transform_array.at(index)->setNodeMask(invisibleMask);
+
 			Virtual_Objects_Count++;
+
 			m_world->ChangeAttribute(pos.x()/10, pos.y()/10, pos.z()/10, index);
+
+			//play some effect
+			PlaySound(_T("pickup04.wav"), NULL, SND_ASYNC);	
 		}
 
 		//reset
@@ -1343,6 +1370,7 @@ int CheckerArModelButtonType()
 		ResetAddModelMode();
 		ResetPanelCond();
 		osgArAddModelIndex = -1;
-	}	
+	}
+	return 0;
 }
 #endif

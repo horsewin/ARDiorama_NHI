@@ -200,7 +200,7 @@ IplImage * HandRegion::GetHandRegion( IplImage * srcImage, int *cont_num, std::v
             float P_NonSkin = _NonSkinColor.GetProbabilityByLookup( R, G, B );
 
             float P = P_Skin/P_NonSkin;
-            if ( P < 0.2 ) {
+            if ( P < 0.4 ) {
                 _pImage->imageData[ i * _pImage->widthStep + j ] = 0;
             }
             else

@@ -6,6 +6,9 @@
 #include "BulletCollision/CollisionShapes/btHeightfieldTerrainShape.h"
 #include "BulletCollision/CollisionDispatch/btSimulationIslandManager.h"
 
+#include <windows.h>
+#include <tchar.h>
+
 #ifdef USE_PARALLEL_DISPATCHER
 #include "BulletMultiThreaded/SpuGatheringCollisionDispatcher.h"
 #include "BulletMultiThreaded/PlatformDefinitions.h"
@@ -253,13 +256,11 @@ struct PanelContactSensorCallback : public btDiscreteDynamicsWorld::ContactResul
 		const btCollisionObject* colObj0,int partId0,int index0,
 		const btCollisionObject* colObj1,int partId1,int index1)
 	{	
-
 		double current_clock = static_cast<double>(cv::getTickCount());
 		double time_spent = ( current_clock - prev_panel_clock ) / cv::getTickFrequency();
+		prev_panel_clock = current_clock;
 
 		panelCollisionLock = true;
-
-		prev_panel_clock = current_clock;
 
 		//なぜかstaticオブジェクトの判定が
 		//colObj0 と colObj1で逆転していた
@@ -299,6 +300,10 @@ struct SelectContactSensorCallback : public btDiscreteDynamicsWorld::ContactResu
 		const btCollisionObject* colObj0,int partId0,int index0,
 		const btCollisionObject* colObj1,int partId1,int index1)
 	{	
+		//パネルに同時に触れることを防止するためにパネルに触れた判定にする
+		double current_clock = static_cast<double>(cv::getTickCount());
+		prev_panel_clock = current_clock;
+
 		bSelectModel= true;
 
 		//なぜかstaticオブジェクトの判定が
@@ -428,8 +433,6 @@ bt_ARMM_world::bt_ARMM_world(void)
 		collide[i] = 0;
 	}
 
-	//m_vehicle.push_back(0);
-	//m_wheelShape.push_back(0);
 	count = 0;
 	rightIndex = 0; 
 	upIndex = 2; 
@@ -512,8 +515,10 @@ bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation
 	//remove the rigidbodies from the dynamics world and delete them
 	int i;
 
-	if (hasInit) {
-		for (i=m_dynamicsWorld->getNumCollisionObjects()-1; i>=0 ;i--) {
+	if (hasInit)
+	{
+		for (i=m_dynamicsWorld->getNumCollisionObjects()-1; i>=0 ;i--) 
+		{
 			btCollisionObject* obj = m_dynamicsWorld->getCollisionObjectArray()[i];
 			btRigidBody* body = btRigidBody::upcast(obj);
 			if (body && body->getMotionState()) {
@@ -526,7 +531,10 @@ bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation
 		chassisMotionState.clear();
 #endif /*SIM_MICROMACHINE*/
 		//delete collision shapes
-		for (int j=0;j<m_collisionShapes.size();j++) delete m_collisionShapes[j];
+		for (int j=0;j<m_collisionShapes.size();j++) 
+		{
+			delete m_collisionShapes[j];
+		}
 		m_collisionShapes.clear();
 
 		Convex_Shape.clear();
@@ -537,31 +545,18 @@ bt_ARMM_world::~bt_ARMM_world(void) { //cleanup in the reverse order of creation
 		delete m_indexVertexArrays;
 		delete m_vertices;
 		delete m_dynamicsWorld;
-#ifdef SIM_MICROMACHINE
-		for (int i = 0; i < 2; i++) {
-			delete m_vehicleRayCaster.at(i);
-			delete m_vehicle.at(i);
-			delete m_wheelShape.at(i);
-		}
+#if CAR_SIMULATION == 1
+		chassisMotionState.clear();
+		m_carChassis.clear();
+		m_vehicleRayCaster.clear();
+		m_vehicle.clear();
 		m_wheelShape.clear();
 #endif /*SIM_MICROMACHINE*/
 		delete m_constraintSolver;
-#ifdef USE_PARALLEL_DISPATCHER
-		if (m_threadSupportSolver) {
-			delete m_threadSupportSolver;
-		}
-#endif
 		delete m_overlappingPairCache; //delete broadphase
 		delete m_dispatcher; //delete dispatcher
-#ifdef USE_PARALLEL_DISPATCHER
-		if (m_threadSupportCollision) {
-			delete m_threadSupportCollision;s
-		}
-#endif
 		delete m_collisionConfiguration;
 	}
-	hasInit =false;
-
 }
 
 void bt_ARMM_world::initPhysics() 
@@ -673,6 +668,8 @@ m_threadSupportCollision = new Win32ThreadSupport(Win32ThreadSupport::Win32Threa
 	}
 	
 	m_indexVertexArrays = new btTriangleIndexVertexArray(totalTriangles, gIndices,indexStride,totalVerts,(btScalar*) &m_vertices[0].x(),vertStride);
+	//m_indexVertexArraysのm_aabbMin, m_aabbMaxのどっちかがおかしい？めっちゃ大きな値入ってる
+
 	bool useQuantizedAabbCompression = true;
 
 	trimeshShape = new btBvhTriangleMeshShape(m_indexVertexArrays,useQuantizedAabbCompression,worldMin,worldMax);
@@ -712,22 +709,21 @@ m_threadSupportCollision = new Win32ThreadSupport(Win32ThreadSupport::Win32Threa
 
 		compound->addChildShape(localTrans,chassisShape);
 	
-		chassisMotionState.push_back(new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0))));
+		chassisMotionState.push_back(boost::shared_ptr<btDefaultMotionState>(new btDefaultMotionState(btTransform(btQuaternion(0,0,0,1),btVector3(0,0,0)))));
 		btVector3 localInertia(0, 0, 0);
 		compound->calculateLocalInertia(Car_Array[i].car_mass,localInertia);
-		btRigidBody::btRigidBodyConstructionInfo carRigidBody1CI( Car_Array[i].car_mass,chassisMotionState.at(i),compound,localInertia);
-		m_carChassis.push_back(new btRigidBody(carRigidBody1CI));
+		btRigidBody::btRigidBodyConstructionInfo carRigidBody1CI( Car_Array[i].car_mass, chassisMotionState.at(i).get(), compound, localInertia);
+		m_carChassis.push_back(boost::shared_ptr<btRigidBody>( new btRigidBody(carRigidBody1CI)));
 
-		m_dynamicsWorld->addRigidBody(m_carChassis.at(i));
+		m_dynamicsWorld->addRigidBody(m_carChassis.at(i).get());
 
-		m_wheelShape.push_back(new btCylinderShapeX(btVector3(Car_Array[i].wheelWidth,Car_Array[i].wheelRadius,Car_Array[i].wheelRadius)));
-
+		m_wheelShape.push_back(boost::shared_ptr<btCylinderShapeX>(new btCylinderShapeX(btVector3(Car_Array[i].wheelWidth,Car_Array[i].wheelRadius,Car_Array[i].wheelRadius))));
 		{
-			m_vehicleRayCaster.push_back(new btDefaultVehicleRaycaster(m_dynamicsWorld));
-			m_vehicle.push_back(new btRaycastVehicle(m_tuning[i],m_carChassis.at(i),m_vehicleRayCaster.at(i)));
+			m_vehicleRayCaster.push_back(boost::shared_ptr<btDefaultVehicleRaycaster>(new btDefaultVehicleRaycaster(m_dynamicsWorld)));
+			m_vehicle.push_back(boost::shared_ptr<btRaycastVehicle>(new btRaycastVehicle(m_tuning[i], m_carChassis.at(i).get() ,m_vehicleRayCaster.at(i).get())));
 			///never deactivate the vehicle
 			m_carChassis.at(i)->setActivationState(DISABLE_DEACTIVATION);
-			m_dynamicsWorld->addVehicle(m_vehicle.at(i));
+			m_dynamicsWorld->addVehicle(m_vehicle.at(i).get());
 			bool isFrontWheel=true;
 
 			m_vehicle.at(i)->setCoordinateSystem(rightIndex,upIndex,forwardIndex);
@@ -740,7 +736,8 @@ m_threadSupportCollision = new Win32ThreadSupport(Win32ThreadSupport::Win32Threa
 			m_vehicle.at(i)->addWheel(connectionPointCS0,wheelDirectionCS0[i],wheelAxleCS[i],suspensionRestLength[i],Car_Array[i].wheelRadius,m_tuning[i],isFrontWheel);
 			connectionPointCS0 = btVector3(Car_Array[i].wheelWidthOffsetBack*CUBE_HALF_EXTENTS-(0.3*Car_Array[i].wheelWidth),Car_Array[i].wheelLengthOffsetBack*(-2)*CUBE_HALF_EXTENTS+Car_Array[i].wheelRadius, Car_Array[i].connectionHeight);
 			m_vehicle.at(i)->addWheel(connectionPointCS0,wheelDirectionCS0[i],wheelAxleCS[i],suspensionRestLength[i],Car_Array[i].wheelRadius,m_tuning[i],isFrontWheel);
-			for (int k=0;k<m_vehicle.at(i)->getNumWheels();k++) {
+			for (int k=0;k<m_vehicle.at(i)->getNumWheels();k++) 
+			{
 				btWheelInfo& wheel = m_vehicle.at(i)->getWheelInfo(k);
 				wheel.m_suspensionStiffness = Car_Array[i].suspensionStiffness;
 				wheel.m_wheelsDampingRelaxation = Car_Array[i].suspensionDamping;
@@ -780,7 +777,8 @@ void bt_ARMM_world::Update()
   	//m_carChassis.at(0)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(pCollision[0], pCollision[1], pCollision[2])));
 	
 	setCarMovement();
-	for (int i = 0; i < NUM_CAR; i++) {
+	for (int i = 0; i < NUM_CAR; i++) 
+	{
 		for (int j=0; j < m_vehicle.at(i)->getNumWheels(); j++) {
 			m_vehicle.at(i)->updateWheelTransform(j,true); 
 		}
@@ -818,7 +816,7 @@ void bt_ARMM_world::Update()
 	m_dynamicsWorld->stepSimulation(1/20.f,5); //60s
 
 	//m_dynamicsWorld->performDiscreteCollisionDetection();
-	m_worldInfo.m_sparsesdf.GarbageCollect();
+//	m_worldInfo.m_sparsesdf.GarbageCollect();
 }
 
 void bt_ARMM_world::setCarMovement() 
@@ -905,7 +903,7 @@ void bt_ARMM_world::resetCarScene(int car_index)
 		Car_Array[car_index].gEngineForce = 0.f;
 
 		//m_carChassis->setCenterOfMassTransform(btTransform::getIdentity());
-		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+5,-5,5)));
+		m_carChassis.at(car_index)->setCenterOfMassTransform(btTransform(btQuaternion(0,0,0,1),btVector3(20*car_index+500,-5,5)));
 		m_carChassis.at(car_index)->setLinearVelocity(btVector3(0,0,0));
 		m_carChassis.at(car_index)->setAngularVelocity(btVector3(0,0,0));
 		m_dynamicsWorld->getBroadphase()->getOverlappingPairCache()->cleanProxyFromPairs(m_carChassis.at(car_index)->getBroadphaseHandle(),m_dynamicsWorld->getDispatcher());
@@ -1308,8 +1306,6 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 					{
 						//between a finger-tip and a virtual object
 		   				m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj).get(), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
-
-
 					}
 	   				//m_dynamicsWorld->contactPairTest(m_objectsBody.at(obj), HandObjectsArray.at(index)->handSphereRigidBody.at(i), callback);
 					//collision check with a texture soft body
@@ -1326,23 +1322,30 @@ void bt_ARMM_world::updateHandDepth(int index, int hand_x, int hand_y, float cur
 	//check collision between finger-tips and menu buttons
 	if(!panelCollisionLock)
 	{
-		for(int obj=1;obj<mMenuBody.size();obj++)
-		{
-			REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
-			{
-				//衝突のチェック
-				if(HandFingersArray[i])
-				{
-					//between a finger-tip and a menu button
-					m_dynamicsWorld->contactPairTest(mMenuBody.at(obj).get(), HandObjectsArray.at(index).get()->handSphereRigidBody.at(i), panelcallback);
+		double current_clock = static_cast<double>(cv::getTickCount());
+		double time_spent = ( current_clock - prev_panel_clock ) / cv::getTickFrequency();
 
-					if(panelCollisionLock) break;
-				}
-			}
-			if(panelCollisionLock)
+		//１秒経過したかどうか
+		if(time_spent > 1.0)
+		{
+			for(int obj=1;obj<mMenuBody.size();obj++)
 			{
-				cout << "Press button" << endl;
-				break;		
+				REP(i, MIN_HAND_PIX*MIN_HAND_PIX)
+				{
+					//衝突のチェック
+					if(HandFingersArray[i])
+					{
+						//between a finger-tip and a menu button
+						m_dynamicsWorld->contactPairTest(mMenuBody.at(obj).get(), HandObjectsArray.at(index).get()->handSphereRigidBody.at(i), panelcallback);
+
+						if(panelCollisionLock) break;
+					}
+				}
+				if(panelCollisionLock)
+				{
+					cout << "Press button" << endl;
+					break;		
+				}
 			}
 		}
 	}
@@ -1482,6 +1485,10 @@ void bt_ARMM_world::DecideCollisionCondition()
 				cout << " Collision to " << i << " in " 
 					<< pCollision << ","
 					<< endl;  
+
+				//play some effect
+					PlaySound(_T("Crrect_answer3.wav"), NULL, SND_ASYNC);	
+
 			}
 			else if(interact_state == PINCH)
 			{
@@ -1533,6 +1540,10 @@ void bt_ARMM_world::DecideCollisionCondition()
 		// it make system unable to stroke
 		cout << "Interaction state changed STROKE to PINCH" << endl;
 		interact_state = PINCH;
+
+		//play some effect
+		PlaySound(_T("attack01.wav"), NULL, SND_ASYNC);	
+
 	}
 
 	if( interact_state==PASTE && !touch)
@@ -1631,5 +1642,5 @@ void bt_ARMM_world::SoftTextureUpdate( void )
     osgUtil::SmoothingVisitor smooth;
     smooth.smooth( *geom );
     geom->getNormalArray()->dirty();
-}
 #endif
+}

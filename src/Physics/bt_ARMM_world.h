@@ -119,12 +119,12 @@ public:
 
 		btVector3*	m_vertices;
 
-		std::vector<btDefaultMotionState*>	chassisMotionState;
-		std::vector<btRigidBody*>			m_carChassis;
-		btRaycastVehicle::btVehicleTuning	m_tuning[NUM_CAR];
-		std::vector<btVehicleRaycaster*>	m_vehicleRayCaster;
-		std::vector<btRaycastVehicle*>		m_vehicle;
-		std::vector<btCollisionShape*>		m_wheelShape;
+		std::vector< boost::shared_ptr<btDefaultMotionState> >	chassisMotionState;
+		std::vector< boost::shared_ptr<btRigidBody> >			m_carChassis;
+		btRaycastVehicle::btVehicleTuning						m_tuning[NUM_CAR];
+		std::vector< boost::shared_ptr<btVehicleRaycaster> >	m_vehicleRayCaster;
+		std::vector< boost::shared_ptr<btRaycastVehicle> >		m_vehicle;
+		std::vector< boost::shared_ptr<btCollisionShape> >		m_wheelShape;
 
 		btClock m_clock;
 

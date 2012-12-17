@@ -85,7 +85,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(LIB3DS)\src;$(OPENCV_2_1)\include\opencv;$(OPENCV_2_1)\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET_INCLUDE_DIR);$(OSGBULLET_INCLUDE_DIR);$(OSGWORKS_INCLUDE_DIR);$(ARMM);$(ARMM_NHI_SHARED_INC_DIR)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(Boost_DIR)/include;$(LIB3DS)\src;$(OPENCV_2_1)\include\opencv;$(OPENCV_2_1)\include;$(ARMM)\src\Skin_Col_Segment;$(VRPN);$(OPIRA)\include;$(OPEN_NI_INCLUDE);$(OSG)\include;$(BULLET_INCLUDE_DIR);$(OSGBULLET_INCLUDE_DIR);$(OSGWORKS_INCLUDE_DIR);$(ARMM);$(ARMM_NHI_SHARED_INC_DIR);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <MinimalRebuild>true</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>

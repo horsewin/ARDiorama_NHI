@@ -111,16 +111,18 @@ public:
 			}
 			if (getKey(77)) { //M
 				//interact_state = PINCH;
-				return 77;
+				osgArInputButton = 203;
+				return 203;
 			}
 			if (getKey(79)) { //o
-				string modelname(DATABASEDIR);
-				modelname+="ItimatsuCow/ItimatsuCow.3ds";
-				int index = world->create_3dsmodel(modelname.c_str());
-				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), 0.005, world->get_Object_Transform(index)));
-				Virtual_Objects_Count++;
-				world->ChangeAttribute(25, -5, 5, index);
-								
+				//string modelname(DATABASEDIR);
+				//modelname+="cube/cube.3ds";
+				////string modelname = "HatuneMiku.3ds";
+				//int index = world->create_3dsmodel(modelname.c_str());
+				//osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
+				//Virtual_Objects_Count++;
+				//world->ChangeAttribute(25, -5, 5, index);
+				//				
 				return 79;
 			}
 
@@ -131,9 +133,20 @@ public:
 				int index = world->create_3dsmodel(modelname.c_str());
 				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
 				Virtual_Objects_Count++;
-				world->ChangeAttribute(15, -5, 5, index);
+				world->ChangeAttribute(10, -5, 5, index);
 
 				return 80;
+			}
+			if (getKey(81)) { //q
+				string modelname(DATABASEDIR);
+				modelname+="cube/cube.3ds";
+				//string modelname = "HatuneMiku.3ds";
+				int index = world->create_3dsmodel(modelname.c_str());
+				osgAddObjectNode(osgNodeFrom3dsModel(world->GetModelName(), world->get3dsScale(), world->get_Object_Transform(index)));
+				Virtual_Objects_Count++;
+				world->ChangeAttribute(25, -5, 5, index);
+								
+				return 81;
 			}
 
 			if (getKey(78) ) { //N
@@ -144,6 +157,7 @@ public:
 #endif /*SIM_MICROMACHINE*/
 		if (getKey(VK_SPACE)) {
 			registerMarker();
+			return 0;
 		}
 
 		if (getKey(VK_RETURN)) {

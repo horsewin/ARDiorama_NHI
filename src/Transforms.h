@@ -133,7 +133,7 @@ bool calcKinectOpenGLTransform(IplImage *colourIm, IplImage* depthIm, CvMat** tr
 			}
 			MARKER_DEPTH = min;
 		}
-		float pixel_width = (xnCorner[1].X- xnCorner[0].X)/4;
+		float pixel_width = (xnCorner[1].X- xnCorner[0].X)/4; //なんで4??画像サイズが160x120に対応するため？？
 		//WORLD_SCALE = (floorf(markerSize.width*10/pixel_width) /100)-0.01;
 		WORLD_SCALE = floorf(markerSize.width*10/pixel_width) /100;//cm_per_pixel
 		printf("width = %.4f,  WORLD_SCALE= %.4f \n", pixel_width, WORLD_SCALE);

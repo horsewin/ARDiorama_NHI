@@ -15,6 +15,7 @@ using namespace std;
 bt_ARMM_hand::bt_ARMM_hand(btDiscreteDynamicsWorld* m_dynamicsWorld, btAlignedObjectArray<btCollisionShape*> m_collisionShapes, float world_scale, float global_x, float global_y, int sphere_resolution, float ratio, float centerx, float centery)
 	: cx(centerx), cy(centery)
 {
+	printf("World Scale = %f, Ratio=%f\n",world_scale, ratio);
 	num_sphere_x = sphere_resolution;
 	num_sphere_y = sphere_resolution;
 	num_sphere_total = num_sphere_x*num_sphere_y;
@@ -88,6 +89,11 @@ void bt_ARMM_hand::Update(float global_x, float global_y, float curr_hands_ratio
 					trans.getOrigin().setZ(depth_grid[index]);
 					hand_area++;
 				}else{
+					//float x = (float) (global_x+i*curr_hands_ratio - cx)*world_scale_hand; //test
+					//float y = (float) (global_y+j*curr_hands_ratio - (120-cy))*world_scale_hand; //test
+					//trans.getOrigin().setX(x);
+					//trans.getOrigin().setY(y);
+					//trans.getOrigin().setZ(0);
 					trans.getOrigin().setX(0);
 					trans.getOrigin().setY(0);
 					trans.getOrigin().setZ(5000);
